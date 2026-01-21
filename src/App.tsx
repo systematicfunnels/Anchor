@@ -931,24 +931,29 @@ function FinancialLegalView({ accessLevel }: { accessLevel: AccessLevel }) {
         <table className="enterprise-table">
           <thead>
             <tr>
-              <th className="w-space-6">ID</th>
-              <th>Object Item</th>
+              <th className="w-space-4">ID</th>
+              <th>Object Item & Financial Context</th>
               <th className="w-space-6">Type</th>
-              <th className="w-space-6">Amount/Value</th>
+              <th className="w-space-6">Value</th>
               <th className="w-space-6">Owner</th>
-              <th className="text-right">Status</th>
+              <th className="w-space-4 text-right">Status</th>
             </tr>
           </thead>
           <tbody>
             {records.map((record) => (
-              <tr key={record.id} className="hover:bg-slate-50">
-                <td className="font-bold text-slate-900">{record.id}</td>
-                <td className="font-medium text-slate-700">{record.item}</td>
-                <td className="text-xs text-slate-500">{record.type}</td>
+              <tr key={record.id} className="hover:bg-slate-50 cursor-pointer">
+                <td className="font-mono text-[10px] font-bold text-brand-accent">{record.id}</td>
+                <td className="text-left">
+                  <div className="flex flex-col">
+                     <span className="font-bold text-slate-900">{record.item}</span>
+                     <span className="text-[10px] text-slate-500 italic leading-none mt-space-0.5">Canonical Financial Record</span>
+                   </div>
+                </td>
+                <td className="text-xs font-bold text-slate-500 uppercase tracking-tighter">{record.type}</td>
                 <td className="text-xs font-bold text-slate-900">{record.amount}</td>
-                <td className="text-xs text-slate-600">{record.owner}</td>
+                <td className="text-xs text-slate-600 font-medium">{record.owner}</td>
                 <td className="text-right">
-                  <span className="text-[9px] font-bold px-space-2 py-space-1 rounded-4 uppercase bg-slate-100 text-slate-500 border border-slate-200">
+                  <span className="text-[9px] font-bold px-space-2 py-0.5 rounded-4 uppercase bg-slate-100 text-slate-500 border border-slate-200">
                     {record.status}
                   </span>
                 </td>
@@ -980,17 +985,19 @@ function App() {
     if (accessLevel === 'NO_ACCESS') {
       return (
         <div className="flex flex-col items-center justify-center py-space-6 text-slate-500 text-center animate-in fade-in zoom-in-95 duration-500">
-          <div className="w-space-4 h-space-4 bg-rose-50 rounded-full flex items-center justify-center mb-space-3">
-            <Lock className="w-space-2 h-space-2 text-rose-500 opacity-60" />
+          <div className="w-space-4 h-space-4 bg-rose-50 rounded-full flex items-center justify-center mb-space-3 border border-rose-100 shadow-sm">
+            <Lock className="w-space-2 h-space-2 text-rose-500 opacity-80" />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Access Restricted</h2>
-          <p className="text-sm mt-space-1 max-w-md text-slate-500">
-            This lifecycle segment is restricted for the <span className="text-brand-accent font-bold px-space-1 py-0.5 bg-brand-accent/5 rounded-4">{user.role}</span> role. 
+          <p className="text-sm mt-space-1 max-w-md text-slate-500 font-medium">
+            This lifecycle segment is restricted for the <span className="text-brand-accent font-bold px-space-1 py-0.5 bg-brand-accent/5 rounded-4 border border-brand-accent/10">{user.role}</span> role. 
+          </p>
+          <p className="text-[11px] text-slate-400 mt-space-2 italic">
             Evidence and governance controls for {activeSection} are not available in your current context.
           </p>
           <button 
             onClick={() => setActiveSection('Project Identity')}
-            className="mt-space-4 px-space-3 py-space-1 bg-brand-accent text-white rounded-4 text-xs font-bold hover:bg-blue-600 transition-all shadow-lg shadow-brand-accent/20 flex items-center gap-space-1"
+            className="mt-space-4 px-space-3 py-space-1 bg-brand-accent text-white rounded-4 text-xs font-bold hover:bg-blue-600 active:scale-95 transition-all shadow-lg shadow-brand-accent/20 flex items-center gap-space-1"
           >
             Return to Project Identity
           </button>
@@ -1029,17 +1036,17 @@ function App() {
       default:
         return (
           <div className="flex flex-col items-center justify-center py-space-6 text-slate-500 animate-in fade-in duration-700">
-            <div className="w-space-6 h-space-6 bg-slate-50 rounded-full flex items-center justify-center mb-space-3 border border-slate-100 shadow-inner">
-              <Search className="w-space-4 h-space-4 text-slate-300" />
+            <div className="w-space-6 h-space-6 bg-white rounded-full flex items-center justify-center mb-space-3 border border-neutral-border shadow-sm">
+              <Search className="w-space-4 h-space-4 text-brand-accent animate-pulse" />
             </div>
-            <p className="text-lg font-bold text-slate-900 tracking-tight">Loading Intelligence Context...</p>
-            <p className="text-sm text-slate-500 mt-space-1 max-w-sm text-center">
-              The {activeSection} evidence layer is being synchronized with the project's historical record.
+            <p className="text-lg font-bold text-slate-900 tracking-tight">Synchronizing Intelligence...</p>
+            <p className="text-sm text-slate-500 mt-space-1 max-w-sm text-center font-medium">
+              The {activeSection} evidence layer is being verified against the project's immutable historical record.
             </p>
-            <div className="mt-space-4 flex items-center gap-space-1 px-space-2 py-space-1 bg-slate-50 rounded-full border border-slate-100">
-              <div className="w-space-1 h-space-1 rounded-full bg-brand-accent animate-pulse" />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">
-                Verifying Lifecycle Integrity
+            <div className="mt-space-4 flex items-center gap-space-2 px-space-3 py-space-1 bg-white rounded-full border border-neutral-border shadow-sm">
+              <div className="w-space-1 h-space-1 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Integrity Check in Progress
               </span>
             </div>
           </div>

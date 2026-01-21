@@ -34,12 +34,12 @@ export default function EvidencePanel({ activeSection }: EvidencePanelProps) {
               <LinkIcon className="w-space-2 h-space-2 text-brand-accent" />
               Linked Objects
             </h3>
-            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-bold">4</span>
+            <span className="text-[10px] bg-slate-100 text-slate-500 px-space-0.75 py-0.5 rounded-full font-bold">4</span>
           </div>
           <div className="space-y-space-1">
             {[1, 2, 3].map((i) => (
               <div key={i} className="group p-space-1 rounded-4 border border-transparent hover:border-slate-200 hover:bg-slate-50 cursor-pointer transition-all">
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-space-0.5">
                   <span className="text-[10px] font-mono font-bold text-brand-accent">REQ-00{i}</span>
                   <span className="text-[9px] text-slate-400">v1.2</span>
                 </div>
@@ -76,11 +76,11 @@ export default function EvidencePanel({ activeSection }: EvidencePanelProps) {
           </h3>
           <div className="space-y-space-2 relative before:absolute before:left-[7.5px] before:top-space-1 before:bottom-space-1 before:w-[1px] before:bg-slate-100">
             {[1, 2].map((i) => (
-              <div key={i} className="relative pl-6">
+              <div key={i} className="relative pl-space-3">
                 <div className="absolute left-0 top-space-0.5 w-space-2 h-space-2 rounded-full border-2 border-white bg-slate-200 z-10" />
                 <div className="text-[11px]">
                   <p className="text-slate-900 font-medium">Metadata Updated</p>
-                  <p className="text-slate-500 mt-0.5">Hemant Chaudhary • 2h ago</p>
+                  <p className="text-slate-500 mt-space-0.5">Hemant Chaudhary • 2h ago</p>
                 </div>
               </div>
             ))}

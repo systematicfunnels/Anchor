@@ -86,7 +86,7 @@ export default function LifecycleExplorer({ activeSection, onSectionChange }: Li
           </div>
           <div className="flex flex-col">
             <span className="text-[11px] font-bold text-white tracking-tight uppercase leading-none">Project Alpha</span>
-            <span className="text-[9px] text-slate-500 font-medium uppercase mt-0.5">Workspace</span>
+            <span className="text-[9px] text-slate-500 font-medium uppercase mt-space-0.5">Workspace</span>
           </div>
         </div>
       </div>
@@ -102,7 +102,7 @@ export default function LifecycleExplorer({ activeSection, onSectionChange }: Li
       {/* Lifecycle Explorer Content */}
       <nav className="flex-1 overflow-y-auto custom-scrollbar" role="navigation" aria-label="Lifecycle Explorer">
         {filteredDomains.map((domain) => (
-          <div key={domain.name} className="mb-1">
+          <div key={domain.name} className="mb-space-0.5">
             <button
               onClick={() => toggleDomain(domain.name)}
               className="w-full flex items-center px-space-1 py-space-1 hover:bg-slate-800/30 group transition-colors"
@@ -118,7 +118,7 @@ export default function LifecycleExplorer({ activeSection, onSectionChange }: Li
             </button>
             
             {expandedDomains.includes(domain.name) && (
-              <div className="mt-0.5">
+              <div className="mt-space-0.5">
                 {domain.items.map((item) => {
                   const accessLevel = getAccessLevel(item.name);
                   const isActive = activeSection === item.name;
