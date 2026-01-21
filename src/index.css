@@ -57,8 +57,22 @@
     @apply bg-slate-50;
   }
 
+  /* Workspace Typography */
+  .font-mono-technical {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  /* Workspace Specific Layouts */
+  .workspace-panel-header {
+    @apply h-header flex items-center px-space-2 border-b border-neutral-border bg-slate-50/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest;
+  }
+
+  .workspace-view-container {
+    @apply p-space-3 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both;
+  }
+
   .nav-item {
-    @apply flex items-center gap-12 px-12 py-8 rounded-6 transition-all duration-150 text-slate-400 hover:text-white hover:bg-white/5;
+    @apply flex items-center gap-space-1 px-space-2 py-space-1 rounded-4 transition-all duration-150 text-slate-400 hover:text-white hover:bg-white/5;
   }
 
   .nav-item-active {
