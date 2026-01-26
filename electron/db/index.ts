@@ -88,14 +88,35 @@ if (clientCount === 0) {
     VALUES (?, 'Acme Corp', 'billing@acme.com', '+1-555-0123', '123 Business Way, Tech City', 'USD', 0, 'Active', ?, ?)
   `).run(clientId, Date.now(), Date.now());
 
-  const quoteId = 'sample-quote-1';
-  sqlite.prepare(`
-    INSERT INTO quotes (id, client_id, version, status, total_cost, total_price, margin, created_at)
-    VALUES (?, ?, 1, 'Approved', 5000, 7500, 33.3, ?)
-  `).run(quoteId, clientId, Date.now());
-
+  const projectId = 'sample-project-1';
   sqlite.prepare(`
     INSERT INTO projects (id, client_id, name, type, status, baseline_cost, baseline_price, baseline_margin, actual_cost)
-    VALUES ('sample-project-1', ?, 'Mobile App Redesign', 'Fixed', 'Active', 5000, 7500, 33.3, 5200)
-  `).run(clientId);
+    VALUES (?, ?, 'Mobile App Redesign', 'Fixed', 'Active', 5000, 7500, 33.3, 5200)
+  `).run(projectId, clientId);
+
+  sqlite.prepare(`
+    INSERT INTO milestones (id, project_id, name, estimated_hours, estimated_cost, price, progress, status)
+    VALUES ('sample-milestone-1', ?, 'Initial Discovery', 20, 1000, 1500, 100, 'Completed')
+  `).run(projectId);
+
+  sqlite.prepare(`
+    INSERT INTO milestones (id, project_id, name, estimated_hours, estimated_cost, price, progress, status)
+    VALUES ('sample-milestone-2', ?, 'UI/UX Design', 40, 2000, 3000, 65, 'In Progress')
+  `).run(projectId);
+
+  sqlite.prepare(`
+    INSERT INTO quotes (id, client_id, version, status, total_cost, total_price, margin, created_at)
+    VALUES ('sample-quote-1', ?, 1, 'Approved', 5000, 7500, 33.3, ?)
+  `).run(clientId, Date.now());
+
+  sqlite.prepare(`
+    INSERT INTO invoices (id, invoice_number, client_id, project_id, status, issue_date, due_date, subtotal, tax, total)
+    VALUES ('sample-invoice-1', 'INV-2024-001', ?, ?, 'Paid', ?, ?, 1500, 0, 1500)
+  `).run(clientId, projectId, Date.now() - 86400000 * 7, Date.now() - 86400000 * 3);
+
+  sqlite.prepare(`
+    INSERT INTO invoices (id, invoice_number, client_id, project_id, status, issue_date, due_date, subtotal, tax, total)
+    VALUES ('sample-invoice-2', 'INV-2024-002', ?, ?, 'Sent', ?, ?, 3000, 0, 3000)
+  `).run(clientId, projectId, Date.now(), Date.now() + 86400000 * 14);
+}
 }

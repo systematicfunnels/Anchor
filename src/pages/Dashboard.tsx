@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { 
   TrendingUp, 
   Briefcase, 
@@ -7,16 +8,41 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
-
-const stats = [
-  { label: 'Cash Snapshot', value: '$124,500', trend: '+12%', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
-  { label: 'Active Projects', value: '24', trend: '+5', icon: Briefcase, color: 'text-purple-600', bg: 'bg-purple-50' },
-  { label: 'Upcoming Invoices', value: '$12,400', trend: '3 due', icon: Receipt, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { label: 'Margin Alerts', value: '2', trend: 'Critical', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
-];
+import { useStore } from '../store/useStore';
 
 export const Dashboard = () => {
+  const { 
+    projects, 
+    invoices, 
+    fetchProjects, 
+    fetchInvoices 
+  } = useStore();
+
+  useEffect(() => {
+    fetchProjects();
+    fetchInvoices();
+  }, [fetchProjects, fetchInvoices]);
+
   const navigate = (path: string) => { window.location.hash = path; };
+  
+  // Calculate real stats from state
+  const totalRevenue = invoices
+    .filter(inv => inv.status === 'Paid')
+    .reduce((sum, inv) => sum + inv.total, 0);
+  
+  const activeProjectsCount = projects.filter(p => p.status === 'Active').length;
+  
+  const upcomingInvoices = invoices.filter(inv => inv.status === 'Sent' || inv.status === 'Draft');
+  const upcomingInvoicesTotal = upcomingInvoices.reduce((sum, inv) => sum + inv.total, 0);
+  
+  const marginAlerts = projects.filter(p => p.baselineMargin < 30).length;
+
+  const stats = [
+    { label: 'Cash Snapshot', value: `$${totalRevenue.toLocaleString()}`, trend: 'Paid', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },
+    { label: 'Active Projects', value: activeProjectsCount.toString(), trend: 'Running', icon: Briefcase, color: 'text-purple-600', bg: 'bg-purple-50' },
+    { label: 'Upcoming Invoices', value: `$${upcomingInvoicesTotal.toLocaleString()}`, trend: `${upcomingInvoices.length} due`, icon: Receipt, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Margin Alerts', value: marginAlerts.toString(), trend: 'Review', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
+  ];
   
   return (
     <div className="space-y-8">
@@ -26,10 +52,16 @@ export const Dashboard = () => {
           <p className="text-neutral-500 text-sm">Real-time pulse of your service delivery and financials.</p>
         </div>
         <div className="flex gap-2">
-          <button className="bg-white border border-neutral-200 text-neutral-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-50 transition-colors">
+          <button 
+            onClick={() => navigate('#quotes')}
+            className="bg-white border border-neutral-200 text-neutral-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-50 transition-colors"
+          >
             New Quote
           </button>
-          <button className="bg-primary-600 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors">
+          <button 
+            onClick={() => navigate('#projects')}
+            className="bg-primary-600 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors"
+          >
             New Project
           </button>
         </div>
@@ -64,36 +96,43 @@ export const Dashboard = () => {
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y divide-red-100">
-                <div className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-900">Margin Risk: Mobile App Redesign</p>
-                      <p className="text-xs text-neutral-500">Current margin (24%) dropped below baseline (35%)</p>
+                {projects.filter(p => p.baselineMargin < 30).slice(0, 2).map(project => (
+                  <div key={project.id} className="p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-900">Margin Risk: {project.name}</p>
+                        <p className="text-xs text-neutral-500">Current margin ({project.baselineMargin}%) is below safety threshold (30%)</p>
+                      </div>
                     </div>
+                    <button 
+                      onClick={() => navigate('#projects')}
+                      className="text-xs font-bold text-primary-600 hover:underline"
+                    >
+                      Review Financials
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => navigate('#projects')}
-                    className="text-xs font-bold text-primary-600 hover:underline"
-                  >
-                    Review Financials
-                  </button>
-                </div>
-                <div className="p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-full bg-amber-500" />
-                    <div>
-                      <p className="text-sm font-semibold text-neutral-900">Overdue Invoice: Acme Corp</p>
-                      <p className="text-xs text-neutral-500">INV-2024-001 is 5 days overdue (£4,500.00)</p>
+                ))}
+                {invoices.filter(inv => inv.status === 'Overdue').slice(0, 2).map(inv => (
+                  <div key={inv.id} className="p-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      <div>
+                        <p className="text-sm font-semibold text-neutral-900">Overdue Invoice: {inv.client?.name}</p>
+                        <p className="text-xs text-neutral-500">{inv.invoiceNumber} is overdue (${inv.total.toLocaleString()})</p>
+                      </div>
                     </div>
+                    <button 
+                      onClick={() => navigate('#invoices')}
+                      className="text-xs font-bold text-primary-600 hover:underline"
+                    >
+                      Send Reminder
+                    </button>
                   </div>
-                  <button 
-                    onClick={() => navigate('#invoices')}
-                    className="text-xs font-bold text-primary-600 hover:underline"
-                  >
-                    Send Reminder
-                  </button>
-                </div>
+                ))}
+                {projects.filter(p => p.baselineMargin >= 30).length === 0 && invoices.filter(inv => inv.status === 'Overdue').length === 0 && (
+                  <div className="p-4 text-center text-sm text-neutral-500">No critical alerts at this time.</div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -101,7 +140,7 @@ export const Dashboard = () => {
           <Card>
             <CardHeader className="flex items-center justify-between py-3 px-4 border-b border-neutral-100">
               <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-tight">Active Delivery Roadmap</h3>
-              <button className="text-xs text-primary-600 font-bold hover:underline">View All Projects</button>
+              <button onClick={() => navigate('#projects')} className="text-xs text-primary-600 font-bold hover:underline">View All Projects</button>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -109,30 +148,40 @@ export const Dashboard = () => {
                   <thead>
                     <tr>
                       <th className="bg-neutral-50/50">PROJECT</th>
-                      <th className="bg-neutral-50/50">PROGRESS</th>
+                      <th className="bg-neutral-50/50">STATUS</th>
                       <th className="bg-neutral-50/50">MARGIN</th>
                       <th className="bg-neutral-50/50"></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-neutral-100">
-                    <tr>
-                      <td className="py-3">
-                        <p className="font-bold text-sm">Cloud Migration</p>
-                        <p className="text-[10px] text-neutral-400 font-bold">Global Tech • Due in 12 days</p>
-                      </td>
-                      <td className="py-3">
-                        <div className="w-32 h-1.5 bg-neutral-100 rounded-full overflow-hidden">
-                          <div className="bg-primary-500 h-full w-[65%]" />
-                        </div>
-                        <p className="text-[10px] text-neutral-500 mt-1 font-bold">65% Complete</p>
-                      </td>
-                      <td className="py-3 font-financial font-bold text-green-600">42.5%</td>
-                      <td className="py-3 text-right">
-                        <button className="p-1 hover:bg-neutral-100 rounded">
-                          <ArrowRight className="w-4 h-4 text-neutral-400" />
-                        </button>
-                      </td>
-                    </tr>
+                    {projects.slice(0, 5).map(project => (
+                      <tr key={project.id}>
+                        <td className="py-3 px-4">
+                          <p className="font-bold text-sm">{project.name}</p>
+                          <p className="text-[10px] text-neutral-400 font-bold">{project.client?.name}</p>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            project.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-neutral-100 text-neutral-700'
+                          }`}>
+                            {project.status.toUpperCase()}
+                          </span>
+                        </td>
+                        <td className={`py-3 px-4 font-financial font-bold ${project.baselineMargin < 30 ? 'text-red-600' : 'text-green-600'}`}>
+                          {project.baselineMargin}%
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button onClick={() => navigate('#projects')} className="p-1 hover:bg-neutral-100 rounded">
+                            <ArrowRight className="w-4 h-4 text-neutral-400" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {projects.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-sm text-neutral-500">No active projects found.</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -147,20 +196,20 @@ export const Dashboard = () => {
             </CardHeader>
             <CardContent className="p-4">
               <div className="space-y-4">
-                {[
-                  { client: 'Acme Corp', amount: '£2,400', date: 'Jan 28' },
-                  { client: 'Stark Ind.', amount: '£12,000', date: 'Feb 02' },
-                ].map((inv) => (
-                  <div key={inv.client} className="flex items-center justify-between border-l-2 border-primary-500 pl-3">
+                {upcomingInvoices.slice(0, 5).map((inv) => (
+                  <div key={inv.id} className="flex items-center justify-between border-l-2 border-primary-500 pl-3">
                     <div>
-                      <p className="text-sm font-bold text-neutral-900">{inv.client}</p>
+                      <p className="text-sm font-bold text-neutral-900">{inv.client?.name}</p>
                       <p className="text-[10px] text-neutral-500 font-bold flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Due {inv.date}
+                        <Clock className="w-3 h-3" /> Due {new Date(inv.dueDate).toLocaleDateString()}
                       </p>
                     </div>
-                    <p className="font-financial font-bold text-neutral-900">{inv.amount}</p>
+                    <p className="font-financial font-bold text-neutral-900">${inv.total.toLocaleString()}</p>
                   </div>
                 ))}
+                {upcomingInvoices.length === 0 && (
+                  <p className="text-center text-sm text-neutral-500 py-4">No upcoming invoices.</p>
+                )}
               </div>
             </CardContent>
           </Card>

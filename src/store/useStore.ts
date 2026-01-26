@@ -37,6 +37,9 @@ export const useStore = create<AppState>((set, get) => ({
   fetchClients: async () => {
     set({ loading: true });
     try {
+      if (!window.api) {
+        throw new Error('window.api is undefined. This store method must be called within an Electron environment.');
+      }
       const clients = await window.api.getClients();
       set({ clients, loading: false });
     } catch (error) {
@@ -48,6 +51,9 @@ export const useStore = create<AppState>((set, get) => ({
   fetchProjects: async () => {
     set({ loading: true });
     try {
+      if (!window.api) {
+        throw new Error('window.api is undefined. This store method must be called within an Electron environment.');
+      }
       const projects = await window.api.getProjects();
       set({ projects, loading: false });
     } catch (error) {
@@ -59,6 +65,9 @@ export const useStore = create<AppState>((set, get) => ({
   fetchQuotes: async () => {
     set({ loading: true });
     try {
+      if (!window.api) {
+        throw new Error('window.api is undefined. This store method must be called within an Electron environment.');
+      }
       const quotes = await window.api.getQuotes();
       set({ quotes, loading: false });
     } catch (error) {
@@ -70,6 +79,9 @@ export const useStore = create<AppState>((set, get) => ({
   fetchInvoices: async () => {
     set({ loading: true });
     try {
+      if (!window.api) {
+        throw new Error('window.api is undefined. This store method must be called within an Electron environment.');
+      }
       const invoices = await window.api.getInvoices();
       set({ invoices, loading: false });
     } catch (error) {
@@ -79,18 +91,30 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   getProjectDetails: async (projectId) => {
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
     return window.api.getProjectDetails(projectId);
   },
 
   updateMilestone: async (milestoneData) => {
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
     await window.api.updateMilestone(milestoneData);
   },
 
   createScopeChange: async (scopeData) => {
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
     await window.api.createScopeChange(scopeData);
   },
 
   approveScopeChange: async (scopeChangeId) => {
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
     set({ loading: true });
     try {
       await window.api.approveScopeChange(scopeChangeId);
@@ -102,39 +126,51 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addClient: async (clientData) => {
-    const newClient = await window.api.createClient(clientData);
-    set((state) => ({ clients: [...state.clients, newClient] }));
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
+    await window.api.createClient(clientData);
+    const { fetchClients } = get();
+    await fetchClients();
   },
 
   updateClient: async (clientData) => {
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
     await window.api.updateClient(clientData);
     const { fetchClients } = get();
     await fetchClients();
   },
 
   createQuote: async (quoteData) => {
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
+    await window.api.createQuote(quoteData);
+    const { fetchQuotes } = get();
+    await fetchQuotes();
+  },
+
+  approveQuote: async (quoteId) => {
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
     set({ loading: true });
     try {
-      await window.api.createQuote(quoteData);
-      const { fetchQuotes } = get();
+      await window.api.approveQuote(quoteId);
+      const { fetchProjects, fetchQuotes } = get();
+      await fetchProjects();
       await fetchQuotes();
     } finally {
       set({ loading: false });
     }
   },
 
-  approveQuote: async (quoteId) => {
-    set({ loading: true });
-    try {
-      await window.api.approveQuote(quoteId);
-      const { fetchQuotes, fetchProjects } = get();
-      await Promise.all([fetchQuotes(), fetchProjects()]);
-    } finally {
-      set({ loading: false });
-    }
-  },
-
   markInvoicePaid: async (invoiceId) => {
+    if (!window.api) {
+      throw new Error('window.api is undefined');
+    }
     set({ loading: true });
     try {
       await window.api.markInvoicePaid(invoiceId);
