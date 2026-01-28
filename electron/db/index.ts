@@ -119,4 +119,3 @@ if (clientCount === 0) {
     VALUES ('sample-invoice-2', 'INV-2024-002', ?, ?, 'Sent', ?, ?, 3000, 0, 3000)
   `).run(clientId, projectId, Date.now(), Date.now() + 86400000 * 14);
 }
-}

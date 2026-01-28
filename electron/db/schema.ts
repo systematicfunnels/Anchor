@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { relations } from 'drizzle-orm';
 
 export const clients = sqliteTable('clients', {
   id: text('id').primaryKey(),
@@ -12,6 +13,12 @@ export const clients = sqliteTable('clients', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
+
+export const clientsRelations = relations(clients, ({ many }) => ({
+  projects: many(projects),
+  quotes: many(quotes),
+  invoices: many(invoices),
+}));
 
 export const projects = sqliteTable('projects', {
   id: text('id').primaryKey(),
@@ -27,6 +34,16 @@ export const projects = sqliteTable('projects', {
   endDate: integer('end_date', { mode: 'timestamp' }),
 });
 
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  client: one(clients, {
+    fields: [projects.clientId],
+    references: [clients.id],
+  }),
+  milestones: many(milestones),
+  scopeChanges: many(scopeChanges),
+  invoices: many(invoices),
+}));
+
 export const milestones = sqliteTable('milestones', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id),
@@ -37,6 +54,13 @@ export const milestones = sqliteTable('milestones', {
   progress: integer('progress').notNull().default(0),
   status: text('status', { enum: ['Planned', 'In Progress', 'Completed'] }).notNull().default('Planned'),
 });
+
+export const milestonesRelations = relations(milestones, ({ one }) => ({
+  project: one(projects, {
+    fields: [milestones.projectId],
+    references: [projects.id],
+  }),
+}));
 
 export const quotes = sqliteTable('quotes', {
   id: text('id').primaryKey(),
@@ -50,6 +74,13 @@ export const quotes = sqliteTable('quotes', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
+export const quotesRelations = relations(quotes, ({ one }) => ({
+  client: one(clients, {
+    fields: [quotes.clientId],
+    references: [clients.id],
+  }),
+}));
+
 export const scopeChanges = sqliteTable('scope_changes', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id),
@@ -59,6 +90,13 @@ export const scopeChanges = sqliteTable('scope_changes', {
   status: text('status', { enum: ['Pending', 'Approved', 'Rejected'] }).notNull().default('Pending'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
+
+export const scopeChangesRelations = relations(scopeChanges, ({ one }) => ({
+  project: one(projects, {
+    fields: [scopeChanges.projectId],
+    references: [projects.id],
+  }),
+}));
 
 export const auditTrail = sqliteTable('audit_trail', {
   id: text('id').primaryKey(),
@@ -81,3 +119,14 @@ export const invoices = sqliteTable('invoices', {
   tax: real('tax').default(0),
   total: real('total').notNull(),
 });
+
+export const invoicesRelations = relations(invoices, ({ one }) => ({
+  client: one(clients, {
+    fields: [invoices.clientId],
+    references: [clients.id],
+  }),
+  project: one(projects, {
+    fields: [invoices.projectId],
+    references: [projects.id],
+  }),
+}));

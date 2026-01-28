@@ -3,8 +3,11 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { setupIpcHandlers } from './ipc/handlers'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// ESM shim for __dirname and __filename
+globalThis.__filename = fileURLToPath(import.meta.url)
+globalThis.__dirname = __dirname
 
 // Initialize IPC Handlers
 setupIpcHandlers()
