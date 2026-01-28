@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -6,11 +7,12 @@ import {
   Receipt, 
   BarChart3, 
   Settings,
-  Plus,
-  Search
+  Search,
+  UserPlus
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { ClientModal } from '../clients/ClientModal';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -19,15 +21,25 @@ function cn(...inputs: ClassValue[]) {
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '#dashboard' },
   { icon: Users, label: 'Clients', href: '#clients' },
-  { icon: Briefcase, label: 'Projects', href: '#projects' },
   { icon: FileText, label: 'Quotes', href: '#quotes' },
+  { icon: Briefcase, label: 'Projects', href: '#projects' },
   { icon: Receipt, label: 'Invoices', href: '#invoices' },
   { icon: BarChart3, label: 'Reports', href: '#reports' },
   { icon: Settings, label: 'Settings', href: '#settings' },
 ];
 
 export const Sidebar = () => {
-  const currentHash = window.location.hash || '#dashboard';
+  const [currentHash, setCurrentHash] = useState(window.location.hash || '#dashboard');
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentHash(window.location.hash || '#dashboard');
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   return (
     <div className="w-64 bg-neutral-900 h-screen flex flex-col fixed left-0 top-0 border-r border-neutral-800">
@@ -54,27 +66,45 @@ export const Sidebar = () => {
 
       {/* Quick Actions */}
       <div className="px-4 mb-6">
-        <button className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 px-3 rounded-md text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm">
-          <Plus className="w-4 h-4" />
-          Quick Action
+        <button 
+          onClick={() => setIsClientModalOpen(true)}
+          className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 px-3 rounded-md text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm"
+        >
+          <UserPlus className="w-4 h-4" />
+          Add Client
         </button>
       </div>
+
+      <ClientModal 
+        isOpen={isClientModalOpen} 
+        onClose={() => setIsClientModalOpen(false)} 
+      />
       
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <a
-            key={item.label}
-            href={item.href}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-              "text-neutral-400 hover:text-white hover:bg-neutral-800",
-              currentHash === item.href && "text-white bg-neutral-800"
-            )}
-          >
-            <item.icon className="w-4 h-4" />
-            {item.label}
-          </a>
-        ))}
+        {navItems.map((item) => {
+          const isActive = currentHash === item.href;
+          return (
+            <a
+              key={item.label}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all relative group",
+                isActive 
+                  ? "text-white bg-white/5 shadow-sm" 
+                  : "text-neutral-400 hover:text-white hover:bg-neutral-800"
+              )}
+            >
+              {isActive && (
+                <div className="absolute left-0 w-1 h-4 bg-primary-500 rounded-r-full" />
+              )}
+              <item.icon className={cn(
+                "w-4 h-4 transition-colors",
+                isActive ? "text-primary-500" : "text-neutral-500 group-hover:text-neutral-300"
+              )} />
+              {item.label}
+            </a>
+          );
+        })}
       </nav>
       
       <div className="p-4 border-t border-neutral-800">

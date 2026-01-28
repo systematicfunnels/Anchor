@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { db } from '../db';
+import { db, resetDatabase } from '../db';
 import { clients, projects, quotes, milestones, scopeChanges, auditTrail, invoices } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
@@ -67,13 +67,24 @@ export function setupIpcHandlers() {
       clientId: quote.clientId,
       name: `Project for Quote ${quoteId.slice(0, 8)}`,
       type: 'Fixed' as const,
-      status: 'Planned' as const,
+      status: 'Active' as const,
       baselineCost: quote.totalCost,
       baselinePrice: quote.totalPrice,
       baselineMargin: quote.margin,
       actualCost: 0,
+      startDate: new Date(),
     };
     await db.insert(projects).values(newProject);
+
+    // Log in audit trail
+    await db.insert(auditTrail).values({
+      id: uuidv4(),
+      entityType: 'Quote',
+      entityId: quoteId,
+      action: 'Quote Approved',
+      details: `Project ${newProject.id} created`,
+      timestamp: new Date(),
+    });
 
     return newProject;
   });
@@ -111,6 +122,11 @@ export function setupIpcHandlers() {
     await db.update(milestones)
       .set(data)
       .where(eq(milestones.id, id));
+    return true;
+  });
+
+  ipcMain.handle('delete-milestone', async (_, id) => {
+    await db.delete(milestones).where(eq(milestones.id, id));
     return true;
   });
 
@@ -154,13 +170,29 @@ export function setupIpcHandlers() {
     });
 
     if (project) {
+      const newBaselineCost = project.baselineCost + scopeChange.costImpact;
+      const newBaselinePrice = project.baselinePrice + scopeChange.priceImpact;
+      const newMargin = newBaselinePrice > 0 
+        ? ((newBaselinePrice - newBaselineCost) / newBaselinePrice) * 100 
+        : 0;
+
       await db.update(projects)
         .set({
-          baselineCost: project.baselineCost + scopeChange.costImpact,
-          baselinePrice: project.baselinePrice + scopeChange.priceImpact,
-          // Recalculate margin logic would go here
+          baselineCost: newBaselineCost,
+          baselinePrice: newBaselinePrice,
+          baselineMargin: newMargin
         })
         .where(eq(projects.id, project.id));
+
+      // Log in audit trail
+      await db.insert(auditTrail).values({
+        id: uuidv4(),
+        entityType: 'Project',
+        entityId: project.id,
+        action: 'Scope Change Approved',
+        details: `Impact: Cost +${scopeChange.costImpact}, Price +${scopeChange.priceImpact}`,
+        timestamp: new Date(),
+      });
     }
 
     return true;
@@ -190,6 +222,62 @@ export function setupIpcHandlers() {
       timestamp: new Date(),
     });
 
+    return true;
+  });
+
+  // Delete Handlers
+  ipcMain.handle('delete-client', async (_, id) => {
+    // Delete dependent records first to avoid foreign key constraints
+    await db.delete(quotes).where(eq(quotes.clientId, id));
+    await db.delete(invoices).where(eq(invoices.clientId, id));
+    
+    // For projects, we need to delete milestones and scope changes first
+    const clientProjects = await db.query.projects.findMany({
+      where: eq(projects.clientId, id)
+    });
+    
+    for (const project of clientProjects) {
+      await db.delete(milestones).where(eq(milestones.projectId, project.id));
+      await db.delete(scopeChanges).where(eq(scopeChanges.projectId, project.id));
+    }
+    
+    await db.delete(projects).where(eq(projects.clientId, id));
+    await db.delete(clients).where(eq(clients.id, id));
+    return true;
+  });
+
+  ipcMain.handle('delete-quote', async (_, id) => {
+    await db.delete(quotes).where(eq(quotes.id, id));
+    return true;
+  });
+
+  ipcMain.handle('delete-project', async (_, id) => {
+    // Delete dependent records
+    await db.delete(milestones).where(eq(milestones.projectId, id));
+    await db.delete(scopeChanges).where(eq(scopeChanges.projectId, id));
+    
+    // For invoices, we should nullify the project reference instead of deleting the invoice
+    await db.update(invoices)
+      .set({ projectId: null })
+      .where(eq(invoices.projectId, id));
+
+    await db.delete(projects).where(eq(projects.id, id));
+    return true;
+  });
+
+  ipcMain.handle('delete-invoice', async (_, id) => {
+    await db.delete(invoices).where(eq(invoices.id, id));
+    return true;
+  });
+
+  ipcMain.handle('delete-scope-change', async (_, id) => {
+    await db.delete(scopeChanges).where(eq(scopeChanges.id, id));
+    return true;
+  });
+
+  // System Handlers
+  ipcMain.handle('reset-database', async () => {
+    resetDatabase();
     return true;
   });
 }

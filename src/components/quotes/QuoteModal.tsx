@@ -16,15 +16,18 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
     clientId: '',
     totalCost: 0,
     totalPrice: 0,
+    taxRate: 20, // Default tax rate
   });
 
   if (!isOpen) return null;
 
   const margin = calculateMargin(formData.totalPrice, formData.totalCost);
+  const taxAmount = (formData.totalPrice * formData.taxRate) / 100;
+  const grandTotal = formData.totalPrice + taxAmount;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.clientId) return alert('Please select a client');
+    if (!formData.clientId) return; // Handled by required attribute
     
     setLoading(true);
     try {
@@ -33,9 +36,9 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
         margin,
       });
       onClose();
-      setFormData({ clientId: '', totalCost: 0, totalPrice: 0 });
+      setFormData({ clientId: '', totalCost: 0, totalPrice: 0, taxRate: 20 });
     } catch (error) {
-      console.error('Failed to create quote', error);
+      // Error handled by store
     } finally {
       setLoading(false);
     }
@@ -54,17 +57,33 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           <div>
             <label className="block text-sm font-medium text-neutral-700 mb-1">Select Client *</label>
-            <select
-              required
-              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
-              value={formData.clientId}
-              onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-            >
-              <option value="">Choose a client...</option>
-              {clients.map(client => (
-                <option key={client.id} value={client.id}>{client.name}</option>
-              ))}
-            </select>
+            {clients.length === 0 ? (
+              <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md border border-amber-100 flex flex-col gap-2">
+                <p>No clients found in the system.</p>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    window.location.hash = '#clients';
+                  }}
+                  className="text-amber-700 font-bold hover:underline text-left"
+                >
+                  + Add your first client
+                </button>
+              </div>
+            ) : (
+              <select
+                required
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                value={formData.clientId}
+                onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+              >
+                <option value="">Choose a client...</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>{client.name}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -82,7 +101,7 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-1">Quoted Price</label>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Quoted Price (Excl. Tax)</label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">$</span>
                 <input
@@ -93,6 +112,22 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
                   onChange={(e) => setFormData({ ...formData, totalPrice: parseFloat(e.target.value) || 0 })}
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Tax Rate (%)</label>
+              <input
+                type="number"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500 font-mono"
+                value={formData.taxRate}
+                onChange={(e) => setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="flex-1 pt-6 text-right">
+              <p className="text-xs text-neutral-500 uppercase font-bold tracking-wider">Grand Total (Incl. Tax)</p>
+              <p className="text-xl font-black text-neutral-900 font-mono">{formatCurrency(grandTotal)}</p>
             </div>
           </div>
 

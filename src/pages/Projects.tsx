@@ -1,21 +1,41 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
-import { Briefcase, TrendingUp, AlertTriangle } from 'lucide-react';
+import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
+import { Briefcase, TrendingUp, AlertTriangle, Trash2 } from 'lucide-react';
 import { formatCurrency, calculateMargin, getMarginColor } from '../lib/finance';
 
 export const Projects = () => {
-  const { projects, fetchProjects, loading } = useStore();
+  const { projects, fetchProjects, deleteProject, loading } = useStore();
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
   }, []);
 
+  const handleDelete = async () => {
+    if (projectToDelete) {
+      await deleteProject(projectToDelete);
+      setProjectToDelete(null);
+    }
+  };
+
+  const navigate = (path: string) => { window.location.hash = path; };
+
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-neutral-900">Projects</h2>
-        <p className="text-neutral-500">Delivery roadmap and real-time profitability tracking.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-neutral-900">Projects</h2>
+          <p className="text-neutral-500">Delivery roadmap and real-time profitability tracking.</p>
+        </div>
+        <button 
+          onClick={() => navigate('#quotes')}
+          className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-700 transition-all shadow-md shadow-primary-500/20 flex items-center gap-2"
+        >
+          <Briefcase className="w-4 h-4" />
+          View Quotes
+        </button>
       </div>
 
       {loading && projects.length === 0 ? (
@@ -23,14 +43,20 @@ export const Projects = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       ) : projects.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-12 px-6 text-center border-dashed">
+        <Card className="flex flex-col items-center justify-center py-16 px-6 text-center border-dashed">
           <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
             <Briefcase className="w-8 h-8 text-neutral-400" />
           </div>
-          <h3 className="text-lg font-bold text-neutral-900">No active projects</h3>
+          <h3 className="text-lg font-bold text-neutral-900">No active projects yet</h3>
           <p className="text-neutral-500 max-w-sm mt-2">
-            Projects are created automatically when a quote is approved.
+            Projects are created automatically when a quote is approved by a client.
           </p>
+          <button 
+            onClick={() => navigate('#quotes')}
+            className="mt-6 bg-white border border-neutral-200 text-neutral-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-neutral-50 transition-all shadow-sm"
+          >
+            Go to Quotes
+          </button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 gap-6">
@@ -48,13 +74,25 @@ export const Projects = () => {
                   <CardContent className="p-6">
                   <div className="flex flex-col lg:flex-row justify-between gap-6">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          project.status === 'Active' ? 'bg-blue-100 text-blue-700' : 'bg-neutral-100 text-neutral-600'
-                        }`}>
-                          {project.status}
-                        </span>
-                        <h3 className="text-lg font-bold text-neutral-900">{project.name}</h3>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            project.status === 'Active' ? 'bg-blue-100 text-blue-700' : 'bg-neutral-100 text-neutral-600'
+                          }`}>
+                            {project.status}
+                          </span>
+                          <h3 className="text-lg font-bold text-neutral-900">{project.name}</h3>
+                        </div>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProjectToDelete(project.id);
+                          }}
+                          className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors opacity-0 group-hover:opacity-100"
+                          title="Delete Project"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                       <p className="text-sm text-neutral-500 mt-1">Client: {project.client?.name}</p>
                       
@@ -104,6 +142,16 @@ export const Projects = () => {
         })}
         </div>
       )}
+
+      <ConfirmationDialog
+        isOpen={!!projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Project"
+        description="Are you sure you want to delete this project? This will permanently remove all associated milestones and scope changes."
+        confirmText="Delete Project"
+        intent="danger"
+      />
     </div>
   );
 };

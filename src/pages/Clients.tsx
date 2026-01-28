@@ -2,16 +2,25 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Plus, MoreVertical, Mail, Phone, MapPin } from 'lucide-react';
+import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
+import { Plus, MoreVertical, Mail, Phone, MapPin, Users, Trash2 } from 'lucide-react';
 import { ClientModal } from '../components/clients/ClientModal';
 
 export const Clients = () => {
-  const { clients, fetchClients, loading } = useStore();
+  const { clients, fetchClients, deleteClient, loading } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClients();
   }, []);
+
+  const handleDelete = async () => {
+    if (clientToDelete) {
+      await deleteClient(clientToDelete);
+      setClientToDelete(null);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -52,9 +61,18 @@ export const Clients = () => {
                   <div className="w-12 h-12 bg-primary-50 rounded-lg flex items-center justify-center text-primary-600 font-bold text-xl">
                     {client.name.charAt(0)}
                   </div>
-                  <button className="p-1 text-neutral-400 hover:text-neutral-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <MoreVertical className="w-4 h-4" />
-                  </button>
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button 
+                      onClick={() => setClientToDelete(client.id)}
+                      className="p-1.5 text-neutral-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                      title="Delete Client"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <button className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-md transition-colors">
+                      <MoreVertical className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="mt-4">
@@ -101,13 +119,16 @@ export const Clients = () => {
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />
+
+      <ConfirmationDialog
+        isOpen={!!clientToDelete}
+        onClose={() => setClientToDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Client"
+        description="Are you sure you want to delete this client? This will not affect existing projects or invoices, but the client record will be removed."
+        confirmText="Delete Client"
+        intent="danger"
+      />
     </div>
   );
 };
-
-// Simple icon for the empty state
-const Users = ({ className }: { className?: string }) => (
-  <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-  </svg>
-);

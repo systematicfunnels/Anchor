@@ -5,15 +5,16 @@ import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
 import { ContextMenu } from '../components/ui/ContextMenu';
-import { Plus, FileText, CheckCircle, Clock, AlertCircle, Copy, Archive, Download } from 'lucide-react';
+import { Plus, FileText, CheckCircle, Clock, AlertCircle, Copy, Archive, Download, Trash2 } from 'lucide-react';
 import { QuoteModal } from '../components/quotes/QuoteModal';
 import { formatCurrency, getMarginColor } from '../lib/finance';
 
 export const Quotes = () => {
-  const { quotes, fetchQuotes, fetchClients, approveQuote, loading } = useStore();
+  const { quotes, fetchQuotes, fetchClients, approveQuote, deleteQuote, loading } = useStore();
   const { addNotification } = useNotificationStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchQuotes();
@@ -28,17 +29,22 @@ export const Quotes = () => {
   const handleApprove = async (id: string) => {
     try {
       await approveQuote(id);
-      addNotification({ 
-        type: 'success', 
-        message: 'Quote approved and project created successfully' 
-      });
+      setConfirmApproveId(null);
     } catch (error) {
-      addNotification({ 
-        type: 'error', 
-        message: 'Failed to approve quote' 
-      });
+      // Handled by store
     }
   };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteQuote(id);
+      setConfirmDeleteId(null);
+    } catch (error) {
+      // Handled by store
+    }
+  };
+
+  const navigate = (path: string) => { window.location.hash = path; };
 
   return (
     <div className="space-y-8">
@@ -47,10 +53,16 @@ export const Quotes = () => {
           <h2 className="text-2xl font-bold text-neutral-900">Quotes</h2>
           <p className="text-neutral-500">Draft, send, and approve project pricing.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Create Quote
-        </Button>
+        <div className="flex gap-3">
+          <Button intent="secondary" onClick={() => navigate('#projects')} className="gap-2">
+            <Archive className="w-4 h-4" />
+            View Projects
+          </Button>
+          <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Create Quote
+          </Button>
+        </div>
       </div>
 
       {loading && quotes.length === 0 ? (
@@ -91,7 +103,7 @@ export const Quotes = () => {
                       <ContextMenu items={[
                         { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: () => addNotification({ type: 'info', message: 'Duplicating quote...' }) },
                         { label: 'Export PDF', icon: <Download className="w-4 h-4" />, onClick: () => addNotification({ type: 'info', message: 'Generating PDF...' }) },
-                        { label: 'Archive', icon: <Archive className="w-4 h-4" />, onClick: () => addNotification({ type: 'warning', message: 'Archiving quote...' }), variant: 'danger' },
+                        { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => setConfirmDeleteId(quote.id), variant: 'danger' },
                       ]}>
                         <div className="flex items-center w-full px-4 py-3">
                           <div className="w-[10%] font-medium">v{quote.version}</div>
@@ -147,9 +159,19 @@ export const Quotes = () => {
         onClose={() => setConfirmApproveId(null)}
         onConfirm={() => confirmApproveId && handleApprove(confirmApproveId)}
         title="Approve Quote"
-        message="Are you sure you want to approve this quote? This will create an active project and lock the financial baseline."
+        description="Are you sure you want to approve this quote? This will create an active project and lock the financial baseline."
         confirmText="Approve & Start Project"
         impact="Converts quote to active project, locking price and initial margin baseline."
+      />
+
+      <ConfirmationDialog
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        title="Delete Quote"
+        description="Are you sure you want to delete this quote? This action cannot be undone."
+        confirmText="Delete Quote"
+        intent="danger"
       />
     </div>
   );

@@ -5,7 +5,8 @@ import {
   Receipt,
   AlertCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Plus
 } from 'lucide-react';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import { useStore } from '../store/useStore';
@@ -44,6 +45,57 @@ export const Dashboard = () => {
     { label: 'Margin Alerts', value: marginAlerts.toString(), trend: 'Review', icon: AlertCircle, color: 'text-red-600', bg: 'bg-red-50' },
   ];
   
+  if (projects.length === 0 && invoices.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-900">Welcome to ServiceOps</h2>
+            <p className="text-neutral-500 text-sm">Let's get your business operations set up.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="p-6 border-2 border-dashed border-neutral-200 flex flex-col items-center text-center space-y-4">
+            <div className="w-12 h-12 bg-primary-50 rounded-full flex items-center justify-center">
+              <Briefcase className="w-6 h-6 text-primary-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-neutral-900">1. Register a Client</h3>
+              <p className="text-sm text-neutral-500 mt-1">Every project and invoice starts with a client.</p>
+            </div>
+            <button 
+              onClick={() => navigate('#clients')}
+              className="mt-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-700 transition-all"
+            >
+              Add Your First Client
+            </button>
+          </Card>
+
+          <Card className="p-6 border-2 border-dashed border-neutral-200 flex flex-col items-center text-center space-y-4 opacity-50">
+            <div className="w-12 h-12 bg-neutral-50 rounded-full flex items-center justify-center">
+              <Plus className="w-6 h-6 text-neutral-400" />
+            </div>
+            <div>
+              <h3 className="font-bold text-neutral-900">2. Create a Quote</h3>
+              <p className="text-sm text-neutral-500 mt-1">Define scope and pricing for your services.</p>
+            </div>
+          </Card>
+
+          <Card className="p-6 border-2 border-dashed border-neutral-200 flex flex-col items-center text-center space-y-4 opacity-50">
+            <div className="w-12 h-12 bg-neutral-50 rounded-full flex items-center justify-center">
+              <Receipt className="w-6 h-6 text-neutral-400" />
+            </div>
+            <div>
+              <h3 className="font-bold text-neutral-900">3. Bill your work</h3>
+              <p className="text-sm text-neutral-500 mt-1">Generate professional invoices automatically.</p>
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -51,18 +103,20 @@ export const Dashboard = () => {
           <h2 className="text-2xl font-bold text-neutral-900">Operations Dashboard</h2>
           <p className="text-neutral-500 text-sm">Real-time pulse of your service delivery and financials.</p>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => navigate('#quotes')}
-            className="bg-white border border-neutral-200 text-neutral-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-50 transition-colors"
-          >
-            New Quote
-          </button>
+        <div className="flex gap-3">
           <button 
             onClick={() => navigate('#projects')}
-            className="bg-primary-600 text-white px-3 py-1.5 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors"
+            className="bg-white border border-neutral-200 text-neutral-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-neutral-50 transition-all shadow-sm flex items-center gap-2"
           >
-            New Project
+            <Briefcase className="w-4 h-4 text-neutral-400" />
+            Active Projects
+          </button>
+          <button 
+            onClick={() => navigate('#quotes')}
+            className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-700 transition-all shadow-md shadow-primary-500/20 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create New Quote
           </button>
         </div>
       </div>
@@ -106,7 +160,7 @@ export const Dashboard = () => {
                       </div>
                     </div>
                     <button 
-                      onClick={() => navigate('#projects')}
+                      onClick={() => navigate(`#projects/${project.id}`)}
                       className="text-xs font-bold text-primary-600 hover:underline"
                     >
                       Review Financials
@@ -171,7 +225,7 @@ export const Dashboard = () => {
                           {project.baselineMargin}%
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <button onClick={() => navigate('#projects')} className="p-1 hover:bg-neutral-100 rounded">
+                          <button onClick={() => navigate(`#projects/${project.id}`)} className="p-1 hover:bg-neutral-100 rounded">
                             <ArrowRight className="w-4 h-4 text-neutral-400" />
                           </button>
                         </td>

@@ -22,7 +22,7 @@ export const clientsRelations = relations(clients, ({ many }) => ({
 
 export const projects = sqliteTable('projects', {
   id: text('id').primaryKey(),
-  clientId: text('client_id').notNull().references(() => clients.id),
+  clientId: text('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   type: text('type', { enum: ['Fixed', 'T&M', 'Retainer'] }).notNull(),
   status: text('status', { enum: ['Planned', 'Active', 'Completed', 'On Hold'] }).notNull().default('Planned'),
@@ -46,7 +46,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
 
 export const milestones = sqliteTable('milestones', {
   id: text('id').primaryKey(),
-  projectId: text('project_id').notNull().references(() => projects.id),
+  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   estimatedHours: real('estimated_hours').notNull(),
   estimatedCost: real('estimated_cost').notNull(),
@@ -64,7 +64,7 @@ export const milestonesRelations = relations(milestones, ({ one }) => ({
 
 export const quotes = sqliteTable('quotes', {
   id: text('id').primaryKey(),
-  clientId: text('client_id').notNull().references(() => clients.id),
+  clientId: text('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
   version: integer('version').notNull().default(1),
   status: text('status', { enum: ['Draft', 'Sent', 'Approved', 'Rejected'] }).notNull().default('Draft'),
   totalCost: real('total_cost').notNull(),
@@ -83,7 +83,7 @@ export const quotesRelations = relations(quotes, ({ one }) => ({
 
 export const scopeChanges = sqliteTable('scope_changes', {
   id: text('id').primaryKey(),
-  projectId: text('project_id').notNull().references(() => projects.id),
+  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   description: text('description').notNull(),
   costImpact: real('cost_impact').notNull().default(0),
   priceImpact: real('price_impact').notNull().default(0),
@@ -110,8 +110,8 @@ export const auditTrail = sqliteTable('audit_trail', {
 export const invoices = sqliteTable('invoices', {
   id: text('id').primaryKey(),
   invoiceNumber: text('invoice_number').notNull().unique(),
-  clientId: text('client_id').notNull().references(() => clients.id),
-  projectId: text('project_id').references(() => projects.id),
+  clientId: text('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  projectId: text('project_id').references(() => projects.id, { onDelete: 'set null' }),
   status: text('status', { enum: ['Draft', 'Sent', 'Paid', 'Overdue'] }).notNull().default('Draft'),
   issueDate: integer('issue_date', { mode: 'timestamp' }).notNull(),
   dueDate: integer('due_date', { mode: 'timestamp' }).notNull(),

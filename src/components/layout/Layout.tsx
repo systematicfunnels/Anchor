@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { Search, Bell, Plus } from 'lucide-react';
+import { Search, Bell, FilePlus } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { QuoteModal } from '../quotes/QuoteModal';
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [hasNotification, setHasNotification] = useState(true);
+
   return (
     <div className="min-h-screen bg-neutral-50 flex">
       <Sidebar />
@@ -23,16 +27,31 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
           
           <div className="flex items-center gap-4">
-            <Button intent="secondary" size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />
-              Quick Action
+            <Button 
+              intent="secondary" 
+              size="sm" 
+              className="gap-2"
+              onClick={() => setIsQuoteModalOpen(true)}
+            >
+              <FilePlus className="w-4 h-4" />
+              New Quote
             </Button>
-            <button className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors relative">
+            <button 
+              onClick={() => setHasNotification(false)}
+              className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors relative"
+            >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              {hasNotification && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+              )}
             </button>
           </div>
         </header>
+        
+        <QuoteModal 
+          isOpen={isQuoteModalOpen} 
+          onClose={() => setIsQuoteModalOpen(false)} 
+        />
         
         {/* Content */}
         <div className="p-8">

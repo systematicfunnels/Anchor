@@ -7,13 +7,20 @@ export interface IElectronAPI {
   getProjects: () => Promise<Project[]>;
   getProjectDetails: (projectId: string) => Promise<Project & { milestones: Milestone[], scopeChanges: ScopeChange[] }>;
   updateMilestone: (milestoneData: Partial<Milestone> & { id: string }) => Promise<void>;
+  deleteMilestone: (id: string) => Promise<void>;
   createScopeChange: (scopeData: Partial<ScopeChange>) => Promise<void>;
   approveScopeChange: (scopeChangeId: string) => Promise<void>;
+  deleteScopeChange: (id: string) => Promise<void>;
   getQuotes: () => Promise<Quote[]>;
   createQuote: (quoteData: Partial<Quote>) => Promise<Quote>;
   approveQuote: (quoteId: string) => Promise<Project>;
   getInvoices: () => Promise<Invoice[]>;
   markInvoicePaid: (invoiceId: string) => Promise<void>;
+  deleteClient: (id: string) => Promise<void>;
+  deleteQuote: (id: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  deleteInvoice: (id: string) => Promise<void>;
+  resetDatabase: () => Promise<void>;
   onMessage: (callback: (message: string) => void) => void;
 }
 

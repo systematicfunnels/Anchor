@@ -30,7 +30,7 @@ sqlite.exec(`
 
   CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
-    client_id TEXT NOT NULL REFERENCES clients(id),
+    client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     type TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'Planned',
@@ -44,7 +44,7 @@ sqlite.exec(`
 
   CREATE TABLE IF NOT EXISTS milestones (
     id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES projects(id),
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     estimated_hours REAL NOT NULL,
     estimated_cost REAL NOT NULL,
@@ -55,7 +55,7 @@ sqlite.exec(`
 
   CREATE TABLE IF NOT EXISTS quotes (
     id TEXT PRIMARY KEY,
-    client_id TEXT NOT NULL REFERENCES clients(id),
+    client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
     version INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL DEFAULT 'Draft',
     total_cost REAL NOT NULL,
@@ -68,14 +68,33 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS invoices (
     id TEXT PRIMARY KEY,
     invoice_number TEXT NOT NULL UNIQUE,
-    client_id TEXT NOT NULL REFERENCES clients(id),
-    project_id TEXT REFERENCES projects(id),
+    client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    project_id TEXT REFERENCES projects(id) ON DELETE SET NULL,
     status TEXT NOT NULL DEFAULT 'Draft',
     issue_date INTEGER NOT NULL,
     due_date INTEGER NOT NULL,
     subtotal REAL NOT NULL,
     tax REAL DEFAULT 0,
     total REAL NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS scope_changes (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    cost_impact REAL NOT NULL DEFAULT 0,
+    price_impact REAL NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'Pending',
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS audit_trail (
+    id TEXT PRIMARY KEY,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    details TEXT,
+    timestamp INTEGER NOT NULL
   );
 `);
 
@@ -118,4 +137,16 @@ if (clientCount === 0) {
     INSERT INTO invoices (id, invoice_number, client_id, project_id, status, issue_date, due_date, subtotal, tax, total)
     VALUES ('sample-invoice-2', 'INV-2024-002', ?, ?, 'Sent', ?, ?, 3000, 0, 3000)
   `).run(clientId, projectId, Date.now(), Date.now() + 86400000 * 14);
+}
+
+export function resetDatabase() {
+  sqlite.exec(`
+    DELETE FROM audit_trail;
+    DELETE FROM scope_changes;
+    DELETE FROM milestones;
+    DELETE FROM invoices;
+    DELETE FROM projects;
+    DELETE FROM quotes;
+    DELETE FROM clients;
+  `);
 }

@@ -7,7 +7,7 @@ interface ConfirmationDialogProps {
   onClose: () => void;
   onConfirm: () => void;
   title: string;
-  message: string;
+  description: string;
   confirmText?: string;
   cancelText?: string;
   intent?: 'primary' | 'danger';
@@ -19,7 +19,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
   onClose,
   onConfirm,
   title,
-  message,
+  description,
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   intent = 'primary',
@@ -45,7 +45,7 @@ export const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-neutral-600 leading-relaxed">{message}</p>
+              <p className="text-neutral-600 leading-relaxed">{description}</p>
               {impact && (
                 <p className="mt-3 text-sm font-bold text-neutral-900 bg-neutral-50 p-3 rounded-lg border border-neutral-100">
                   Impact: {impact}

@@ -30,7 +30,7 @@ export const ClientModal = ({ isOpen, onClose }: ClientModalProps) => {
       onClose();
       setFormData({ name: '', email: '', phone: '', billingAddress: '', currency: 'USD' as Currency });
     } catch (error) {
-      console.error('Failed to add client', error);
+      // Error is handled by the store and shown via notifications
     } finally {
       setLoading(false);
     }

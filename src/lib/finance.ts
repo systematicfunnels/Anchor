@@ -14,6 +14,14 @@ export const formatCurrency = (amount: number, currency: string = 'USD'): string
   }).format(amount);
 };
 
+export const calculateTax = (amount: number, taxRate: number): number => {
+  return amount * (taxRate / 100);
+};
+
+export const calculateTotalWithTax = (amount: number, taxRate: number): number => {
+  return amount + calculateTax(amount, taxRate);
+};
+
 export const getMarginStatus = (margin: number) => {
   if (margin < 10) return 'critical';
   if (margin < 20) return 'warning';

@@ -5,9 +5,11 @@ import {
   Users, 
   Briefcase, 
   DollarSign,
-  ArrowUpRight
+  ArrowUpRight,
+  ExternalLink
 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useNotificationStore } from '../store/useNotificationStore';
 
 export const Reports = () => {
   const { 
@@ -18,6 +20,9 @@ export const Reports = () => {
     fetchClients, 
     fetchInvoices 
   } = useStore();
+  const { addNotification } = useNotificationStore();
+
+  const navigate = (path: string) => { window.location.hash = path; };
 
   useEffect(() => {
     fetchProjects();
@@ -37,6 +42,29 @@ export const Reports = () => {
   const activeClientsCount = clients.filter(c => c.status === 'Active').length;
   const completedProjectsCount = projects.filter(p => p.status === 'Completed').length;
 
+  if (projects.length === 0 && invoices.length === 0) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-neutral-900">Reports</h2>
+        <Card className="flex flex-col items-center justify-center py-16 px-6 text-center border-dashed">
+          <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
+            <TrendingUp className="w-8 h-8 text-neutral-400" />
+          </div>
+          <h3 className="text-lg font-bold text-neutral-900">Insufficient Data</h3>
+          <p className="text-neutral-500 max-w-sm mt-2">
+            Reports will populate once you have active projects and paid invoices.
+          </p>
+          <button 
+            onClick={() => navigate('#dashboard')}
+            className="mt-6 bg-white border border-neutral-200 text-neutral-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-neutral-50 transition-all shadow-sm"
+          >
+            Return to Dashboard
+          </button>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -48,7 +76,10 @@ export const Reports = () => {
             <option>Year to Date</option>
             <option>All Time</option>
           </select>
-          <button className="bg-white border border-neutral-200 text-neutral-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-50 transition-colors">
+          <button 
+            onClick={() => addNotification({ type: 'info', message: 'Exporting data as CSV... This will be ready in a moment.' })}
+            className="bg-white border border-neutral-200 text-neutral-700 px-3 py-1.5 rounded-md text-sm font-medium hover:bg-neutral-50 transition-colors"
+          >
             Export CSV
           </button>
         </div>
@@ -106,9 +137,16 @@ export const Reports = () => {
           <h3 className="text-lg font-semibold mb-4">Project Profitability</h3>
           <div className="space-y-4">
             {projects.slice(0, 5).map((project) => (
-              <div key={project.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+              <div 
+                key={project.id} 
+                onClick={() => navigate(`#projects/${project.id}`)}
+                className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors group"
+              >
                 <div>
-                  <div className="font-medium text-sm">{project.name}</div>
+                  <div className="font-medium text-sm group-hover:text-primary-600 flex items-center gap-1.5">
+                    {project.name}
+                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="text-xs text-neutral-500">${project.baselinePrice.toLocaleString()} revenue</div>
                 </div>
                 <div className="text-right">
@@ -131,9 +169,16 @@ export const Reports = () => {
               const clientProjects = projects.filter(p => p.clientId === client.id);
               const clientRevenue = clientProjects.reduce((sum, p) => sum + p.baselinePrice, 0);
               return (
-                <div key={client.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg">
+                <div 
+                  key={client.id} 
+                  onClick={() => navigate('#clients')}
+                  className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg hover:bg-neutral-100 cursor-pointer transition-colors group"
+                >
                   <div>
-                    <div className="font-medium text-sm">{client.name}</div>
+                    <div className="font-medium text-sm group-hover:text-primary-600 flex items-center gap-1.5">
+                      {client.name}
+                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
                     <div className="text-xs text-neutral-500">{clientProjects.length} projects</div>
                   </div>
                   <div className="text-right">

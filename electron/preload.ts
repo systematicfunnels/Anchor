@@ -11,8 +11,10 @@ contextBridge.exposeInMainWorld('api', {
   getProjects: () => ipcRenderer.invoke('get-projects'),
   getProjectDetails: (projectId: string) => ipcRenderer.invoke('get-project-details', projectId),
   updateMilestone: (milestoneData: any) => ipcRenderer.invoke('update-milestone', milestoneData),
+  deleteMilestone: (id: string) => ipcRenderer.invoke('delete-milestone', id),
   createScopeChange: (scopeData: any) => ipcRenderer.invoke('create-scope-change', scopeData),
   approveScopeChange: (scopeChangeId: string) => ipcRenderer.invoke('approve-scope-change', scopeChangeId),
+  deleteScopeChange: (id: string) => ipcRenderer.invoke('delete-scope-change', id),
   
   // Quote APIs
   getQuotes: () => ipcRenderer.invoke('get-quotes'),
@@ -23,7 +25,14 @@ contextBridge.exposeInMainWorld('api', {
   getInvoices: () => ipcRenderer.invoke('get-invoices'),
   markInvoicePaid: (invoiceId: string) => ipcRenderer.invoke('mark-invoice-paid', invoiceId),
   
+  // Delete APIs
+  deleteClient: (id: string) => ipcRenderer.invoke('delete-client', id),
+  deleteQuote: (id: string) => ipcRenderer.invoke('delete-quote', id),
+  deleteProject: (id: string) => ipcRenderer.invoke('delete-project', id),
+  deleteInvoice: (id: string) => ipcRenderer.invoke('delete-invoice', id),
+  
   // System
+  resetDatabase: () => ipcRenderer.invoke('reset-database'),
   onMessage: (callback: (message: string) => void) => 
     ipcRenderer.on('main-process-message', (_event, value) => callback(value)),
 })

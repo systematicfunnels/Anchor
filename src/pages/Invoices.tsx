@@ -4,13 +4,14 @@ import { useNotificationStore } from '../store/useNotificationStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
-import { Plus, Receipt, ExternalLink, Download, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Receipt, ExternalLink, Download, CheckCircle, Clock, Trash2 } from 'lucide-react';
 import { formatCurrency } from '../lib/finance';
 
 export const Invoices = () => {
-  const { invoices, fetchInvoices, loading, markInvoicePaid } = useStore();
+  const { invoices, fetchInvoices, loading, markInvoicePaid, deleteInvoice } = useStore();
   const { addNotification } = useNotificationStore();
   const [confirmPaidId, setConfirmPaidId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchInvoices();
@@ -19,16 +20,18 @@ export const Invoices = () => {
   const handleMarkPaid = async (id: string) => {
     try {
       await markInvoicePaid(id);
-      const invoice = invoices.find(inv => inv.id === id);
-      addNotification({
-        type: 'success',
-        message: `Invoice #${invoice?.invoiceNumber} marked as paid`,
-      });
+      setConfirmPaidId(null);
     } catch (error) {
-      addNotification({
-        type: 'error',
-        message: 'Failed to update invoice status',
-      });
+      // Handled by store
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteInvoice(id);
+      setConfirmDeleteId(null);
+    } catch (error) {
+      // Handled by store
     }
   };
 
@@ -39,7 +42,10 @@ export const Invoices = () => {
           <h2 className="text-2xl font-bold text-neutral-900">Invoices</h2>
           <p className="text-neutral-500">Manage billing, tracking, and payment collection.</p>
         </div>
-        <Button className="gap-2">
+        <Button 
+          onClick={() => addNotification({ type: 'info', message: 'Manual invoice creation will be available in the next update. Please generate invoices from the Project Detail roadmaps for now.' })}
+          className="gap-2"
+        >
           <Plus className="w-4 h-4" />
           Create Invoice
         </Button>
@@ -106,6 +112,13 @@ export const Invoices = () => {
                         <button className="p-2 text-neutral-400 hover:text-primary-600 transition-colors" title="View Details">
                           <ExternalLink className="w-4 h-4" />
                         </button>
+                        <button 
+                          onClick={() => setConfirmDeleteId(invoice.id)}
+                          className="p-2 text-neutral-400 hover:text-red-600 transition-colors" 
+                          title="Delete Invoice"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -121,9 +134,19 @@ export const Invoices = () => {
         onClose={() => setConfirmPaidId(null)}
         onConfirm={() => confirmPaidId && handleMarkPaid(confirmPaidId)}
         title="Mark Invoice as Paid"
-        message="This will update your financial records and acknowledge receipt of payment."
+        description="This will update your financial records and acknowledge receipt of payment."
         confirmText="Confirm Payment"
         impact="Increases cash snapshot and closes the invoice lifecycle."
+      />
+
+      <ConfirmationDialog 
+        isOpen={!!confirmDeleteId}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}
+        title="Delete Invoice"
+        description="Are you sure you want to delete this invoice? This action cannot be undone."
+        confirmText="Delete Invoice"
+        intent="danger"
       />
     </div>
   );
