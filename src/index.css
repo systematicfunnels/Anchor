@@ -1,94 +1,51 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-  :root {
-    --brand-primary: 15 23 42; /* Slate 900 */
-    --brand-secondary: 30 41 59; /* Slate 800 */
-    --brand-accent: 59 130 246; /* Blue 500 */
-    --semantic-success: 16 185 129; /* Emerald 500 */
-    --semantic-warning: 245 158 11; /* Amber 500 */
-    --semantic-error: 239 68 68; /* Red 500 */
-    --neutral-surface: 248 250 252; /* Slate 50 */
-    --neutral-border: 226 232 240; /* Slate 200 */
-  }
+@theme {
+  --color-neutral-50: #f9fafb;
+  --color-neutral-100: #f3f4f6;
+  --color-neutral-200: #e5e7eb;
+  --color-neutral-300: #d1d5db;
+  --color-neutral-400: #9ca3af;
+  --color-neutral-500: #6b7280;
+  --color-neutral-600: #4b5563;
+  --color-neutral-700: #374151;
+  --color-neutral-800: #1f2937;
+  --color-neutral-900: #111827;
 
-  html, body, #root {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-    overflow: hidden; /* App shell handles scrolling */
-  }
+  --color-primary-50: #eff6ff;
+  --color-primary-100: #dbeafe;
+  --color-primary-200: #bfdbfe;
+  --color-primary-300: #93c5fd;
+  --color-primary-400: #60a5fa;
+  --color-primary-500: #3b82f6;
+  --color-primary-600: #2563eb;
+  --color-primary-700: #1d4ed8;
+  --color-primary-800: #1e40af;
+  --color-primary-900: #1e3a8a;
 
-  body {
-    @apply font-sans bg-neutral-surface text-brand-primary antialiased;
-  }
+  --font-mono: "JetBrains Mono", "Menlo", "Monaco", "Consolas", "liberation mono", "courier new", "monospace";
 }
 
-@layer components {
-  .layout-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 24px; /* Space.3 */
+@layer base {
+  body {
+    @apply bg-neutral-50 text-neutral-900;
   }
 
-  .governed-card {
-    @apply bg-neutral-elevated border border-neutral-border rounded-4 p-space-2 shadow-sm transition-all;
+  /* Dense tables as per spec */
+  table {
+    @apply w-full text-left border-collapse;
   }
 
-  .governed-card-approved {
-    @apply border-l-4 border-l-semantic-success;
+  th {
+    @apply sticky top-0 bg-neutral-100 px-3 py-2 text-xs font-semibold text-neutral-600 border-b border-neutral-200;
   }
 
-  .enterprise-table {
-    @apply w-full border-collapse text-left;
+  td {
+    @apply px-3 py-2 text-sm border-b border-neutral-100;
   }
 
-  .enterprise-table th {
-    @apply h-header px-space-2 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-neutral-border sticky top-0 z-10;
-  }
-
-  .enterprise-table td {
-    @apply h-row px-space-2 text-xs text-slate-700 border-b border-neutral-border bg-white transition-colors;
-  }
-
-  .enterprise-table tr:hover td {
-    @apply bg-slate-50;
-  }
-
-  /* Workspace Typography */
-  .font-mono-technical {
-    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  }
-
-  /* Workspace Specific Layouts */
-  .workspace-panel-header {
-    @apply h-header flex items-center px-space-2 border-b border-neutral-border bg-slate-50/50 text-[10px] font-bold text-slate-500 uppercase tracking-widest;
-  }
-
-  .workspace-view-container {
-    @apply p-space-3 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-both;
-  }
-
-  .nav-item {
-    @apply flex items-center gap-space-1 px-space-2 py-space-1 rounded-4 transition-all duration-150 text-slate-400 hover:text-white hover:bg-white/5;
-  }
-
-  .nav-item-active {
-    @apply bg-brand-accent/10 text-brand-accent font-medium;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+  /* Financial numbers should be mono */
+  .font-financial {
+    @apply font-mono tabular-nums;
   }
 }

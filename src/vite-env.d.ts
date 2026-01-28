@@ -1,14 +1,24 @@
-/// <reference types="vite/client" />
+import { Client, Project, Quote, Invoice, Milestone, ScopeChange } from './types';
 
-export interface IpcRenderer {
-  on: (channel: string, listener: (event: any, ...args: any[]) => void) => void;
-  off: (channel: string, listener: (event: any, ...args: any[]) => void) => void;
-  send: (channel: string, ...args: any[]) => void;
-  invoke: (channel: string, ...args: any[]) => Promise<any>;
+export interface IElectronAPI {
+  getClients: () => Promise<Client[]>;
+  createClient: (clientData: Partial<Client>) => Promise<Client>;
+  updateClient: (clientData: Partial<Client> & { id: string }) => Promise<boolean>;
+  getProjects: () => Promise<Project[]>;
+  getProjectDetails: (projectId: string) => Promise<Project & { milestones: Milestone[], scopeChanges: ScopeChange[] }>;
+  updateMilestone: (milestoneData: Partial<Milestone> & { id: string }) => Promise<void>;
+  createScopeChange: (scopeData: Partial<ScopeChange>) => Promise<void>;
+  approveScopeChange: (scopeChangeId: string) => Promise<void>;
+  getQuotes: () => Promise<Quote[]>;
+  createQuote: (quoteData: Partial<Quote>) => Promise<Quote>;
+  approveQuote: (quoteId: string) => Promise<Project>;
+  getInvoices: () => Promise<Invoice[]>;
+  markInvoicePaid: (invoiceId: string) => Promise<void>;
+  onMessage: (callback: (message: string) => void) => void;
 }
 
 declare global {
   interface Window {
-    ipcRenderer: IpcRenderer;
+    api: IElectronAPI;
   }
 }

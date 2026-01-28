@@ -1,23 +1,22 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App'
+import App from './App.tsx'
 import './index.css'
-import { AuthProvider } from './context/AuthContext'
+import { mockApi } from './lib/mockApi'
+
+// Fallback for browser mode
+if (!window.api) {
+  console.info('Running in browser mode: using mock API fallback.');
+  window.api = mockApi;
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <App />
   </React.StrictMode>,
 )
 
-// Remove Preload loader
-postMessage({ payload: 'removeLoading' }, '*')
-
-// Use contextBridge
-if (window.ipcRenderer) {
-  window.ipcRenderer.on('main-process-message', (_event, message) => {
-    console.log(message)
-  })
-}
+// Use contextBridge via window.api
+window.api.onMessage((message) => {
+  console.log(message)
+})
