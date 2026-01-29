@@ -6,20 +6,20 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const Card = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-  <div className={cn("bg-white border border-neutral-200 rounded-lg shadow-sm", className)}>
+export const Card = ({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("bg-white border border-neutral-200 rounded-lg shadow-sm", className)} {...props}>
     {children}
   </div>
 );
 
 export const CardHeader = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-  <div className={cn("px-6 py-4 border-b border-neutral-200", className)}>
+  <div className={cn("px-[var(--card-padding-x)] py-[var(--card-padding-y)] border-b border-neutral-200", className)}>
     {children}
   </div>
 );
 
 export const CardContent = ({ children, className }: { children: React.ReactNode, className?: string }) => (
-  <div className={cn("px-6 py-4", className)}>
+  <div className={cn("px-[var(--card-padding-x)] py-[var(--card-padding-y)]", className)}>
     {children}
   </div>
 );

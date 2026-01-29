@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Button } from '../ui/Button';
 import { useStore } from '../../store/useStore';
 import { X, Calculator } from 'lucide-react';
-import { calculateMargin, formatCurrency } from '../../lib/finance';
+import { calculateMargin } from '../../lib/finance';
+import { useCurrency } from '../../hooks/useCurrency';
 
 interface QuoteModalProps {
   isOpen: boolean;
@@ -10,16 +11,21 @@ interface QuoteModalProps {
 }
 
 export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
+  const { formatCurrency, getCurrencySymbol } = useCurrency();
   const { clients, createQuote } = useStore();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     clientId: '',
+    name: '',
     totalCost: 0,
     totalPrice: 0,
     taxRate: 20, // Default tax rate
   });
 
   if (!isOpen) return null;
+
+  const selectedClient = clients.find(c => c.id === formData.clientId);
+  const clientCurrency = selectedClient?.currency;
 
   const margin = calculateMargin(formData.totalPrice, formData.totalCost);
   const taxAmount = (formData.totalPrice * formData.taxRate) / 100;
@@ -33,10 +39,11 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
     try {
       await createQuote({
         ...formData,
+        name: formData.name || 'New Quote',
         margin,
       });
       onClose();
-      setFormData({ clientId: '', totalCost: 0, totalPrice: 0, taxRate: 20 });
+      setFormData({ clientId: '', name: '', totalCost: 0, totalPrice: 0, taxRate: 20 });
     } catch (error) {
       // Error handled by store
     } finally {
@@ -55,8 +62,22 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-neutral-700 mb-1">Select Client *</label>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Quote Name *</label>
+              <input
+                required
+                autoFocus
+                type="text"
+                placeholder="e.g. Website Redesign v1"
+                className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-neutral-700 mb-1">Select Client *</label>
             {clients.length === 0 ? (
               <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md border border-amber-100 flex flex-col gap-2">
                 <p>No clients found in the system.</p>
@@ -85,12 +106,13 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
               </select>
             )}
           </div>
+        </div>
 
-          <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Estimated Cost</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">{getCurrencySymbol(clientCurrency)}</span>
                 <input
                   type="number"
                   step="0.01"
@@ -103,7 +125,7 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-1">Quoted Price (Excl. Tax)</label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">$</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400 text-sm">{getCurrencySymbol(clientCurrency)}</span>
                 <input
                   type="number"
                   step="0.01"
@@ -127,7 +149,7 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
             </div>
             <div className="flex-1 pt-6 text-right">
               <p className="text-xs text-neutral-500 uppercase font-bold tracking-wider">Grand Total (Incl. Tax)</p>
-              <p className="text-xl font-black text-neutral-900 font-mono">{formatCurrency(grandTotal)}</p>
+              <p className="text-xl font-black text-neutral-900 font-mono">{formatCurrency(grandTotal, clientCurrency)}</p>
             </div>
           </div>
 
@@ -141,7 +163,7 @@ export const QuoteModal = ({ isOpen, onClose }: QuoteModalProps) => {
               <div>
                 <p className="text-xs text-neutral-500 uppercase tracking-wider">Gross Profit</p>
                 <p className="text-lg font-bold font-mono">
-                  {formatCurrency(formData.totalPrice - formData.totalCost)}
+                  {formatCurrency(formData.totalPrice - formData.totalCost, clientCurrency)}
                 </p>
               </div>
               <div className="text-right">

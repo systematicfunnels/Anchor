@@ -7,10 +7,12 @@ import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
 import { ContextMenu } from '../components/ui/ContextMenu';
 import { Plus, FileText, CheckCircle, Clock, AlertCircle, Copy, Archive, Download, Trash2 } from 'lucide-react';
 import { QuoteModal } from '../components/quotes/QuoteModal';
-import { formatCurrency, getMarginColor } from '../lib/finance';
+import { getMarginColor } from '../lib/finance';
+import { useCurrency } from '../hooks/useCurrency';
 
 export const Quotes = () => {
-  const { quotes, fetchQuotes, fetchClients, approveQuote, deleteQuote, loading } = useStore();
+  const { formatCurrency } = useCurrency();
+  const { quotes, fetchQuotes, fetchClients, approveQuote, duplicateQuote, deleteQuote, loading } = useStore();
   const { addNotification } = useNotificationStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
@@ -47,11 +49,11 @@ export const Quotes = () => {
   const navigate = (path: string) => { window.location.hash = path; };
 
   return (
-    <div className="space-y-8">
+    <div className="page-container">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-neutral-900">Quotes</h2>
-          <p className="text-neutral-500">Draft, send, and approve project pricing.</p>
+          <p className="text-sm text-neutral-500">Draft, send, and approve project pricing.</p>
         </div>
         <div className="flex gap-3">
           <Button intent="secondary" onClick={() => navigate('#projects')} className="gap-2">
@@ -70,12 +72,12 @@ export const Quotes = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
       ) : quotes.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-12 px-6 text-center border-dashed">
+        <Card className="flex flex-col items-center justify-center py-12 px-6 text-center border-dashed border-2">
           <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
             <FileText className="w-8 h-8 text-neutral-400" />
           </div>
           <h3 className="text-lg font-bold text-neutral-900">No quotes yet</h3>
-          <p className="text-neutral-500 max-w-sm mt-2">
+          <p className="text-neutral-500 max-w-sm mt-2 text-sm">
             Create your first quote to define project scope and pricing.
           </p>
           <Button intent="secondary" className="mt-6" onClick={() => setIsModalOpen(true)}>
@@ -83,17 +85,17 @@ export const Quotes = () => {
           </Button>
         </Card>
       ) : (
-        <Card className="overflow-hidden">
+        <Card className="overflow-hidden shadow-sm">
           <CardContent className="p-0">
             <table className="min-w-full">
               <thead>
                 <tr>
-                  <th>VERSION</th>
-                  <th>CLIENT</th>
-                  <th>TOTAL PRICE</th>
-                  <th>MARGIN</th>
-                  <th>STATUS</th>
-                  <th className="text-right">ACTIONS</th>
+                  <th className="w-[10%]">QUOTE</th>
+                  <th className="w-[20%]">CLIENT</th>
+                  <th className="w-[20%]">TOTAL PRICE</th>
+                  <th className="w-[15%]">MARGIN</th>
+                  <th className="w-[15%]">STATUS</th>
+                  <th className="w-[20%] text-right pr-6">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -101,14 +103,17 @@ export const Quotes = () => {
                   <tr key={quote.id} className="hover:bg-neutral-50 transition-colors group">
                     <td colSpan={6} className="p-0">
                       <ContextMenu items={[
-                        { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: () => addNotification({ type: 'info', message: 'Duplicating quote...' }) },
+                        { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: () => duplicateQuote(quote.id) },
                         { label: 'Export PDF', icon: <Download className="w-4 h-4" />, onClick: () => addNotification({ type: 'info', message: 'Generating PDF...' }) },
                         { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => setConfirmDeleteId(quote.id), variant: 'danger' },
                       ]}>
                         <div className="flex items-center w-full px-4 py-3">
-                          <div className="w-[10%] font-medium">v{quote.version}</div>
+                          <div className="w-[10%]">
+                            <div className="font-bold text-neutral-900">{quote.name}</div>
+                            <div className="text-[10px] text-neutral-400 font-mono uppercase">v{quote.version} • {quote.id.slice(0, 8)}</div>
+                          </div>
                           <div className="w-[20%]">{quote.client?.name || 'Unknown Client'}</div>
-                          <div className="w-[20%] font-financial font-bold">{formatCurrency(quote.totalPrice)}</div>
+                          <div className="w-[20%] font-financial font-bold">{formatCurrency(quote.totalPrice, quote.client?.currency)}</div>
                           <div className={`w-[15%] font-financial font-bold ${getMarginColor(quote.margin)}`}>
                             {quote.margin.toFixed(1)}%
                           </div>
@@ -124,10 +129,10 @@ export const Quotes = () => {
                               {quote.status}
                             </span>
                           </div>
-                          <div className="w-[20%] text-right">
+                          <div className="w-[20%] text-right flex items-center justify-end gap-2">
                             {quote.status === 'Draft' && (
                               <Button 
-                                intent="secondary" 
+                                intent="primary" 
                                 size="sm" 
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -137,6 +142,42 @@ export const Quotes = () => {
                                 Approve
                               </Button>
                             )}
+                            <Button 
+                              intent="secondary" 
+                              size="sm"
+                              className="p-1.5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                duplicateQuote(quote.id);
+                              }}
+                              title="Duplicate Quote"
+                            >
+                              <Copy className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              intent="secondary" 
+                              size="sm"
+                              className="p-1.5"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addNotification({ type: 'info', message: 'Generating PDF...' });
+                              }}
+                              title="Export PDF"
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                            <Button 
+                              intent="secondary" 
+                              size="sm" 
+                              className="p-1.5 text-red-600 hover:text-red-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteId(quote.id);
+                              }}
+                              title="Delete Quote"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           </div>
                         </div>
                       </ContextMenu>

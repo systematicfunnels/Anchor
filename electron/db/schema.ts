@@ -1,6 +1,26 @@
 import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
 import { relations } from 'drizzle-orm';
 
+export const expenses = sqliteTable('expenses', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  category: text('category').notNull(), // 'Software', 'Contractor', 'Hardware', 'Travel', 'Other'
+  description: text('description').notNull(),
+  amount: real('amount').notNull(),
+  date: integer('date', { mode: 'timestamp' }).notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});
+
+export const documents = sqliteTable('documents', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  type: text('type').notNull(),
+  size: integer('size').notNull(),
+  path: text('path').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});
+
 export const clients = sqliteTable('clients', {
   id: text('id').primaryKey(),
   name: text('name').notNull().unique(),
@@ -18,6 +38,7 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   projects: many(projects),
   quotes: many(quotes),
   invoices: many(invoices),
+  documents: many(documents),
 }));
 
 export const projects = sqliteTable('projects', {
@@ -29,7 +50,9 @@ export const projects = sqliteTable('projects', {
   baselineCost: real('baseline_cost').notNull(),
   baselinePrice: real('baseline_price').notNull(),
   baselineMargin: real('baseline_margin').notNull(),
+  description: text('description'),
   actualCost: real('actual_cost').notNull().default(0),
+  progress: integer('progress').notNull().default(0),
   startDate: integer('start_date', { mode: 'timestamp' }),
   endDate: integer('end_date', { mode: 'timestamp' }),
 });
@@ -42,6 +65,14 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   milestones: many(milestones),
   scopeChanges: many(scopeChanges),
   invoices: many(invoices),
+  documents: many(documents),
+}));
+
+export const documentsRelations = relations(documents, ({ one }) => ({
+  project: one(projects, {
+    fields: [documents.projectId],
+    references: [projects.id],
+  }),
 }));
 
 export const milestones = sqliteTable('milestones', {
@@ -65,6 +96,7 @@ export const milestonesRelations = relations(milestones, ({ one }) => ({
 export const quotes = sqliteTable('quotes', {
   id: text('id').primaryKey(),
   clientId: text('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  name: text('name').notNull().default('New Quote'),
   version: integer('version').notNull().default(1),
   status: text('status', { enum: ['Draft', 'Sent', 'Approved', 'Rejected'] }).notNull().default('Draft'),
   totalCost: real('total_cost').notNull(),
@@ -74,10 +106,28 @@ export const quotes = sqliteTable('quotes', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
 });
 
-export const quotesRelations = relations(quotes, ({ one }) => ({
+export const quoteItems = sqliteTable('quote_items', {
+  id: text('id').primaryKey(),
+  quoteId: text('quote_id').notNull().references(() => quotes.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description'),
+  estimatedHours: real('estimated_hours').notNull(),
+  estimatedCost: real('estimated_cost').notNull(),
+  price: real('price').notNull(),
+});
+
+export const quotesRelations = relations(quotes, ({ one, many }) => ({
   client: one(clients, {
     fields: [quotes.clientId],
     references: [clients.id],
+  }),
+  items: many(quoteItems),
+}));
+
+export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
+  quote: one(quotes, {
+    fields: [quoteItems.quoteId],
+    references: [quotes.id],
   }),
 }));
 
@@ -130,3 +180,17 @@ export const invoicesRelations = relations(invoices, ({ one }) => ({
     references: [projects.id],
   }),
 }));
+
+export const expensesRelations = relations(expenses, ({ one }) => ({
+  project: one(projects, {
+    fields: [expenses.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const settings = sqliteTable('settings', {
+  id: text('id').primaryKey(),
+  key: text('key').notNull().unique(),
+  value: text('value').notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});

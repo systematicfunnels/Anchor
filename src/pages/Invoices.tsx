@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
-import { useNotificationStore } from '../store/useNotificationStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
-import { Plus, Receipt, ExternalLink, Download, CheckCircle, Clock, Trash2 } from 'lucide-react';
-import { formatCurrency } from '../lib/finance';
+import { Plus, Receipt, Download, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { InvoiceModal } from '../components/invoices/InvoiceModal';
+import { useCurrency } from '../hooks/useCurrency';
 
 export const Invoices = () => {
+  const { formatCurrency } = useCurrency();
   const { invoices, fetchInvoices, loading, markInvoicePaid, deleteInvoice } = useStore();
-  const { addNotification } = useNotificationStore();
   const [confirmPaidId, setConfirmPaidId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchInvoices();
@@ -36,14 +37,14 @@ export const Invoices = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="page-container">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-neutral-900">Invoices</h2>
           <p className="text-neutral-500">Manage billing, tracking, and payment collection.</p>
         </div>
         <Button 
-          onClick={() => addNotification({ type: 'info', message: 'Manual invoice creation will be available in the next update. Please generate invoices from the Project Detail roadmaps for now.' })}
+          onClick={() => setIsModalOpen(true)}
           className="gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -64,6 +65,9 @@ export const Invoices = () => {
           <p className="text-neutral-500 max-w-sm mt-2">
             Generate invoices from completed milestones or project roadmaps.
           </p>
+          <Button intent="secondary" className="mt-6" onClick={() => setIsModalOpen(true)}>
+            Create First Invoice
+          </Button>
         </Card>
       ) : (
         <Card className="overflow-hidden">
@@ -71,22 +75,22 @@ export const Invoices = () => {
             <table className="min-w-full">
               <thead>
                 <tr>
-                  <th>NUMBER</th>
-                  <th>CLIENT</th>
-                  <th>DUE DATE</th>
-                  <th>TOTAL</th>
-                  <th>STATUS</th>
-                  <th className="text-right">ACTIONS</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-wider">NUMBER</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-wider">CLIENT</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-wider">DUE DATE</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-wider">TOTAL</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-neutral-500 uppercase tracking-wider">STATUS</th>
+                  <th className="px-4 py-3 text-right text-[10px] font-bold text-neutral-500 uppercase tracking-wider">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {invoices.map((invoice) => (
                   <tr key={invoice.id} className="hover:bg-neutral-50 transition-colors">
-                    <td className="font-bold">{invoice.invoiceNumber}</td>
-                    <td>{invoice.client?.name}</td>
-                    <td>{new Date(invoice.dueDate).toLocaleDateString()}</td>
-                    <td className="font-financial font-bold">{formatCurrency(invoice.total)}</td>
-                    <td>
+                    <td className="px-4 py-3 font-bold">{invoice.invoiceNumber}</td>
+                    <td className="px-4 py-3">{invoice.client?.name}</td>
+                    <td className="px-4 py-3">{new Date(invoice.dueDate).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 font-financial font-bold">{formatCurrency(invoice.total, invoice.client?.currency)}</td>
+                    <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         invoice.status === 'Paid' ? 'bg-green-50 text-green-700' :
                         invoice.status === 'Overdue' ? 'bg-red-50 text-red-700' :
@@ -96,29 +100,35 @@ export const Invoices = () => {
                         {invoice.status}
                       </span>
                     </td>
-                    <td className="text-right">
+                    <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         {invoice.status !== 'Paid' && (
-                          <button 
+                          <Button 
+                            intent="primary" 
+                            size="sm"
                             onClick={() => setConfirmPaidId(invoice.id)}
-                            className="text-xs font-bold text-green-600 hover:text-green-700 px-2 py-1"
+                            title="Mark as Paid"
                           >
                             Mark Paid
-                          </button>
+                          </Button>
                         )}
-                        <button className="p-2 text-neutral-400 hover:text-primary-600 transition-colors" title="Download PDF">
+                        <Button 
+                          intent="secondary" 
+                          size="sm" 
+                          className="p-1.5"
+                          title="Download PDF"
+                        >
                           <Download className="w-4 h-4" />
-                        </button>
-                        <button className="p-2 text-neutral-400 hover:text-primary-600 transition-colors" title="View Details">
-                          <ExternalLink className="w-4 h-4" />
-                        </button>
-                        <button 
+                        </Button>
+                        <Button 
+                          intent="secondary" 
+                          size="sm" 
+                          className="p-1.5 text-red-600 hover:text-red-700"
                           onClick={() => setConfirmDeleteId(invoice.id)}
-                          className="p-2 text-neutral-400 hover:text-red-600 transition-colors" 
                           title="Delete Invoice"
                         >
                           <Trash2 className="w-4 h-4" />
-                        </button>
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -129,17 +139,21 @@ export const Invoices = () => {
         </Card>
       )}
 
-      <ConfirmationDialog 
+      <InvoiceModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
+
+      <ConfirmationDialog
         isOpen={!!confirmPaidId}
         onClose={() => setConfirmPaidId(null)}
         onConfirm={() => confirmPaidId && handleMarkPaid(confirmPaidId)}
-        title="Mark Invoice as Paid"
-        description="This will update your financial records and acknowledge receipt of payment."
-        confirmText="Confirm Payment"
-        impact="Increases cash snapshot and closes the invoice lifecycle."
+        title="Mark as Paid"
+        description="Are you sure you want to mark this invoice as paid? This will update the project revenue and cash flow metrics."
+        confirmText="Mark as Paid"
       />
 
-      <ConfirmationDialog 
+      <ConfirmationDialog
         isOpen={!!confirmDeleteId}
         onClose={() => setConfirmDeleteId(null)}
         onConfirm={() => confirmDeleteId && handleDelete(confirmDeleteId)}

@@ -6,9 +6,11 @@ import { Clients } from './pages/Clients';
 import { Quotes } from './pages/Quotes';
 import { Projects } from './pages/Projects';
 import { ProjectDetail } from './pages/ProjectDetail';
+import { ClientDetail } from './pages/ClientDetail';
 import { Invoices } from './pages/Invoices';
-import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { UnitEconomics } from './pages/UnitEconomics';
+import { Documents } from './pages/Documents';
 
 function App() {
   const [currentPath, setCurrentPath] = useState(window.location.hash || '#dashboard');
@@ -55,6 +57,10 @@ function App() {
     if (currentPath.startsWith('#projects/')) {
       return <ProjectDetail />;
     }
+    
+    if (currentPath.startsWith('#clients/')) {
+      return <ClientDetail />;
+    }
 
     switch (currentPath) {
       case '#dashboard':
@@ -67,8 +73,10 @@ function App() {
         return <Projects />;
       case '#invoices':
         return <Invoices />;
-      case '#reports':
-        return <Reports />;
+      case '#economics':
+        return <UnitEconomics />;
+      case '#documents':
+        return <Documents />;
       case '#settings':
         return <Settings />;
       default:

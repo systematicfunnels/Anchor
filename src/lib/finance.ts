@@ -1,5 +1,5 @@
 /**
- * Core Financial Logic for ServiceOps Manager
+ * Core Financial Logic for Anchor (Solo)
  */
 
 export const calculateMargin = (price: number, cost: number): number => {
@@ -7,11 +7,33 @@ export const calculateMargin = (price: number, cost: number): number => {
   return ((price - cost) / price) * 100;
 };
 
+export const EXCHANGE_RATES: Record<string, number> = {
+  USD: 1,
+  EUR: 0.92,
+  GBP: 0.79,
+  INR: 83.12,
+};
+
+export const convertCurrency = (amount: number, from: string, to: string): number => {
+  if (from === to) return amount;
+  const baseAmount = amount / (EXCHANGE_RATES[from] || 1);
+  return baseAmount * (EXCHANGE_RATES[to] || 1);
+};
+
 export const formatCurrency = (amount: number, currency: string = 'USD'): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
   }).format(amount);
+};
+
+export const getCurrencySymbol = (currency: string = 'USD'): string => {
+  return (0).toLocaleString('en-US', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).replace(/\d/g, '').trim();
 };
 
 export const calculateTax = (amount: number, taxRate: number): number => {

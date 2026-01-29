@@ -10,6 +10,8 @@ const dbPath = isDev
   : path.join(app.getPath('userData'), 'serviceops.db');
 
 const sqlite = new Database(dbPath);
+sqlite.pragma('foreign_keys = ON');
+
 export const db = drizzle(sqlite, { schema });
 
 // Run migrations manually or use drizzle-kit for production
@@ -37,6 +39,8 @@ sqlite.exec(`
     baseline_cost REAL NOT NULL,
     baseline_price REAL NOT NULL,
     baseline_margin REAL NOT NULL,
+    description TEXT,
+    progress INTEGER NOT NULL DEFAULT 0,
     actual_cost REAL NOT NULL DEFAULT 0,
     start_date INTEGER,
     end_date INTEGER
@@ -56,6 +60,7 @@ sqlite.exec(`
   CREATE TABLE IF NOT EXISTS quotes (
     id TEXT PRIMARY KEY,
     client_id TEXT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+    name TEXT NOT NULL DEFAULT 'New Quote',
     version INTEGER NOT NULL DEFAULT 1,
     status TEXT NOT NULL DEFAULT 'Draft',
     total_cost REAL NOT NULL,
@@ -78,6 +83,13 @@ sqlite.exec(`
     total REAL NOT NULL
   );
 
+  CREATE TABLE IF NOT EXISTS settings (
+    id TEXT PRIMARY KEY,
+    key TEXT NOT NULL UNIQUE,
+    value TEXT NOT NULL,
+    updated_at INTEGER NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS scope_changes (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -96,55 +108,65 @@ sqlite.exec(`
     details TEXT,
     timestamp INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS expenses (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    category TEXT NOT NULL,
+    description TEXT NOT NULL,
+    amount REAL NOT NULL,
+    date INTEGER NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS documents (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL,
+    size INTEGER NOT NULL,
+    path TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS quote_items (
+    id TEXT PRIMARY KEY,
+    quote_id TEXT NOT NULL REFERENCES quotes(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    estimated_hours REAL NOT NULL,
+    estimated_cost REAL NOT NULL,
+    price REAL NOT NULL
+  );
 `);
 
-// Add sample data if empty
-const clientCount = (db.select().from(schema.clients).all()).length;
-if (clientCount === 0) {
-  const clientId = 'sample-client-1';
-  sqlite.prepare(`
-    INSERT INTO clients (id, name, email, phone, billing_address, currency, tax_rate, status, created_at, updated_at)
-    VALUES (?, 'Acme Corp', 'billing@acme.com', '+1-555-0123', '123 Business Way, Tech City', 'USD', 0, 'Active', ?, ?)
-  `).run(clientId, Date.now(), Date.now());
+// Migration helpers for existing databases
+try {
+  sqlite.exec("ALTER TABLE quotes ADD COLUMN name TEXT NOT NULL DEFAULT 'New Quote'");
+} catch (e) { /* Column already exists */ }
 
-  const projectId = 'sample-project-1';
-  sqlite.prepare(`
-    INSERT INTO projects (id, client_id, name, type, status, baseline_cost, baseline_price, baseline_margin, actual_cost)
-    VALUES (?, ?, 'Mobile App Redesign', 'Fixed', 'Active', 5000, 7500, 33.3, 5200)
-  `).run(projectId, clientId);
+try {
+  sqlite.exec("ALTER TABLE quotes ADD COLUMN margin REAL NOT NULL DEFAULT 0");
+} catch (e) { /* Column already exists */ }
 
-  sqlite.prepare(`
-    INSERT INTO milestones (id, project_id, name, estimated_hours, estimated_cost, price, progress, status)
-    VALUES ('sample-milestone-1', ?, 'Initial Discovery', 20, 1000, 1500, 100, 'Completed')
-  `).run(projectId);
+try {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN description TEXT");
+} catch (e) { /* Column already exists */ }
 
-  sqlite.prepare(`
-    INSERT INTO milestones (id, project_id, name, estimated_hours, estimated_cost, price, progress, status)
-    VALUES ('sample-milestone-2', ?, 'UI/UX Design', 40, 2000, 3000, 65, 'In Progress')
-  `).run(projectId);
-
-  sqlite.prepare(`
-    INSERT INTO quotes (id, client_id, version, status, total_cost, total_price, margin, created_at)
-    VALUES ('sample-quote-1', ?, 1, 'Approved', 5000, 7500, 33.3, ?)
-  `).run(clientId, Date.now());
-
-  sqlite.prepare(`
-    INSERT INTO invoices (id, invoice_number, client_id, project_id, status, issue_date, due_date, subtotal, tax, total)
-    VALUES ('sample-invoice-1', 'INV-2024-001', ?, ?, 'Paid', ?, ?, 1500, 0, 1500)
-  `).run(clientId, projectId, Date.now() - 86400000 * 7, Date.now() - 86400000 * 3);
-
-  sqlite.prepare(`
-    INSERT INTO invoices (id, invoice_number, client_id, project_id, status, issue_date, due_date, subtotal, tax, total)
-    VALUES ('sample-invoice-2', 'INV-2024-002', ?, ?, 'Sent', ?, ?, 3000, 0, 3000)
-  `).run(clientId, projectId, Date.now(), Date.now() + 86400000 * 14);
-}
+try {
+  sqlite.exec("ALTER TABLE projects ADD COLUMN progress INTEGER NOT NULL DEFAULT 0");
+} catch (e) { /* Column already exists */ }
 
 export function resetDatabase() {
   sqlite.exec(`
+    DELETE FROM quote_items;
     DELETE FROM audit_trail;
     DELETE FROM scope_changes;
     DELETE FROM milestones;
     DELETE FROM invoices;
+    DELETE FROM expenses;
+    DELETE FROM documents;
+    DELETE FROM settings;
     DELETE FROM projects;
     DELETE FROM quotes;
     DELETE FROM clients;

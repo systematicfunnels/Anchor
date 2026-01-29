@@ -29,9 +29,12 @@ export interface Project {
   baselinePrice: number;
   baselineMargin: number;
   actualCost: number;
+  description?: string;
+  progress: number;
   startDate?: Date;
   endDate?: Date;
   client?: Client;
+  milestones?: Milestone[];
 }
 
 export interface Milestone {
@@ -48,6 +51,7 @@ export interface Milestone {
 export interface Quote {
   id: string;
   clientId: string;
+  name: string;
   version: number;
   status: QuoteStatus;
   totalCost: number;
@@ -75,6 +79,40 @@ export interface AuditTrail {
   action: string;
   details?: string;
   timestamp: Date;
+}
+
+export interface Document {
+  id: string;
+  projectId: string;
+  name: string;
+  type: string;
+  size: number;
+  path: string;
+  createdAt: Date;
+}
+
+export interface Expense {
+  id: string;
+  projectId: string;
+  category: string;
+  description: string;
+  amount: number;
+  date: Date;
+  createdAt: Date;
+}
+
+export type ErrorCode = 
+  | 'DATABASE_ERROR' 
+  | 'VALIDATION_ERROR' 
+  | 'NOT_FOUND' 
+  | 'FILE_SYSTEM_ERROR' 
+  | 'UNKNOWN_ERROR';
+
+export interface AppError {
+  __isAppError: true;
+  code: ErrorCode;
+  message: string;
+  details?: any;
 }
 
 export interface Invoice {

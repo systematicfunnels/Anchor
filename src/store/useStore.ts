@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Client, Project, Quote, Invoice, Milestone, ScopeChange } from '../types';
+import { Client, Project, Quote, Invoice, Milestone, ScopeChange, Document, Expense, Currency } from '../types';
 import { useNotificationStore } from './useNotificationStore';
 
 interface AppState {
@@ -7,27 +7,57 @@ interface AppState {
   projects: Project[];
   quotes: Quote[];
   invoices: Invoice[];
+  expenses: Expense[];
+  settings: Record<string, string>;
   loading: boolean;
+  
+  // View mode for currency exchange check
+  viewCurrency: Currency | null;
+  setViewCurrency: (currency: Currency | null) => void;
   
   fetchClients: () => Promise<void>;
   fetchProjects: () => Promise<void>;
   fetchQuotes: () => Promise<void>;
   fetchInvoices: () => Promise<void>;
+  fetchExpenses: () => Promise<void>;
+  fetchSettings: () => Promise<void>;
   
-  getProjectDetails: (projectId: string) => Promise<Project & { milestones: Milestone[], scopeChanges: ScopeChange[] }>;
+  getProjectDetails: (projectId: string) => Promise<Project & { 
+    milestones: Milestone[], 
+    scopeChanges: ScopeChange[], 
+    documents: Document[],
+    expenses: Expense[]
+  }>;
+  
+  // Expense actions
+  addExpense: (expense: Partial<Expense>) => Promise<void>;
+  deleteExpense: (id: string) => Promise<void>;
+
   updateMilestone: (milestoneData: Partial<Milestone> & { id: string }) => Promise<void>;
   deleteMilestone: (id: string) => Promise<void>;
   createScopeChange: (scopeChange: Partial<ScopeChange>) => Promise<void>;
   approveScopeChange: (scopeChangeId: string) => Promise<void>;
   deleteScopeChange: (id: string) => Promise<void>;
   
+  // Document actions
+  uploadDocument: (projectId: string, file: File) => Promise<void>;
+  downloadDocument: (documentId: string) => Promise<void>;
+  deleteDocument: (documentId: string) => Promise<void>;
+  
   addClient: (client: Partial<Client>) => Promise<void>;
   updateClient: (client: Partial<Client> & { id: string }) => Promise<void>;
+  addProject: (project: Partial<Project>) => Promise<void>;
+  updateProject: (project: Partial<Project> & { id: string }) => Promise<void>;
   
   createQuote: (quote: Partial<Quote>) => Promise<void>;
+  duplicateQuote: (quoteId: string) => Promise<void>;
   approveQuote: (quoteId: string) => Promise<void>;
   
   markInvoicePaid: (invoiceId: string) => Promise<void>;
+  generateInvoice: (projectId: string, milestoneIds: string[]) => Promise<void>;
+  createManualInvoice: (invoiceData: { clientId: string, subtotal: number, projectId?: string, taxRate?: number }) => Promise<void>;
+
+  updateSettings: (key: string, value: string) => Promise<void>;
 
   deleteClient: (id: string) => Promise<void>;
   deleteQuote: (id: string) => Promise<void>;
@@ -41,13 +71,26 @@ const notify = (message: string, type: 'success' | 'error' | 'info' | 'warning' 
 };
 
 const handleApiError = (error: any, context: string) => {
+  const isAppError = error && typeof error === 'object' && error.__isAppError;
+  const message = isAppError ? error.message : `Failed to ${context.toLowerCase()}. Please try again.`;
+  const type = isAppError && error.code === 'VALIDATION_ERROR' ? 'warning' : 'error';
+  
   console.error(`[Store Error: ${context}]`, error);
-  notify(`Failed to ${context.toLowerCase()}. Please try again.`, 'error');
+  notify(message, type);
 };
 
 const getApi = () => {
-  if (!window.api) throw new Error('Electron API not initialized');
+  if (!window.api) {
+    console.warn('Electron API not found. Ensure you are running in the Electron environment for data persistence.');
+    throw new Error('Electron API not initialized');
+  }
   return window.api;
+};
+
+const wrapApiCall = async (apiCall: Promise<any>) => {
+  const result = await apiCall;
+  if (result && result.__isAppError) throw result;
+  return result;
 };
 
 export const useStore = create<AppState>((set, get) => ({
@@ -55,13 +98,18 @@ export const useStore = create<AppState>((set, get) => ({
   projects: [],
   quotes: [],
   invoices: [],
+  expenses: [],
+  settings: {},
   loading: false,
+  viewCurrency: null,
+
+  setViewCurrency: (currency) => set({ viewCurrency: currency }),
 
   fetchClients: async () => {
     set({ loading: true });
     try {
-      const clients = await getApi().getClients();
-      set({ clients, loading: false });
+      const result = await wrapApiCall(getApi().getClients());
+      set({ clients: result, loading: false });
     } catch (error) {
       handleApiError(error, 'Fetch Clients');
       set({ loading: false });
@@ -71,8 +119,8 @@ export const useStore = create<AppState>((set, get) => ({
   fetchProjects: async () => {
     set({ loading: true });
     try {
-      const projects = await getApi().getProjects();
-      set({ projects, loading: false });
+      const result = await wrapApiCall(getApi().getProjects());
+      set({ projects: result, loading: false });
     } catch (error) {
       handleApiError(error, 'Fetch Projects');
       set({ loading: false });
@@ -82,8 +130,8 @@ export const useStore = create<AppState>((set, get) => ({
   fetchQuotes: async () => {
     set({ loading: true });
     try {
-      const quotes = await getApi().getQuotes();
-      set({ quotes, loading: false });
+      const result = await wrapApiCall(getApi().getQuotes());
+      set({ quotes: result, loading: false });
     } catch (error) {
       handleApiError(error, 'Fetch Quotes');
       set({ loading: false });
@@ -93,21 +141,55 @@ export const useStore = create<AppState>((set, get) => ({
   fetchInvoices: async () => {
     set({ loading: true });
     try {
-      const invoices = await getApi().getInvoices();
-      set({ invoices, loading: false });
+      const result = await wrapApiCall(getApi().getInvoices());
+      set({ invoices: result, loading: false });
     } catch (error) {
       handleApiError(error, 'Fetch Invoices');
       set({ loading: false });
     }
   },
 
+  fetchExpenses: async () => {
+    set({ loading: true });
+    try {
+      const result = await wrapApiCall(getApi().getExpenses(''));
+      set({ expenses: result, loading: false });
+    } catch (error) {
+      handleApiError(error, 'Fetch Expenses');
+      set({ loading: false });
+    }
+  },
+
+  fetchSettings: async () => {
+    try {
+      const result = await wrapApiCall(getApi().getSettings());
+      set({ settings: result });
+    } catch (error) {
+      handleApiError(error, 'Fetch Settings');
+    }
+  },
+
   getProjectDetails: async (projectId) => {
-    return getApi().getProjectDetails(projectId);
+    return wrapApiCall(getApi().getProjectDetails(projectId));
   },
 
   updateMilestone: async (milestoneData) => {
     try {
-      await getApi().updateMilestone(milestoneData);
+      await wrapApiCall(getApi().updateMilestone(milestoneData));
+      // Update local state for immediate feedback
+      set((state) => ({
+        projects: state.projects.map(p => {
+          if (p.milestones) {
+            return {
+              ...p,
+              milestones: p.milestones.map((m: Milestone) => 
+                m.id === milestoneData.id ? { ...m, ...milestoneData } : m
+              )
+            };
+          }
+          return p;
+        })
+      }));
       notify('Milestone updated', 'success');
     } catch (error) {
       handleApiError(error, 'Update Milestone');
@@ -118,18 +200,28 @@ export const useStore = create<AppState>((set, get) => ({
   deleteMilestone: async (id) => {
     set({ loading: true });
     try {
-      await getApi().deleteMilestone(id);
+      await wrapApiCall(getApi().deleteMilestone(id));
+      // Update local state
+      set((state) => ({
+        projects: state.projects.map(p => ({
+          ...p,
+          milestones: p.milestones?.filter((m: Milestone) => m.id !== id)
+        })),
+        loading: false
+      }));
       notify('Milestone deleted', 'success');
     } catch (error) {
       handleApiError(error, 'Delete Milestone');
-    } finally {
       set({ loading: false });
     }
   },
 
   createScopeChange: async (scopeData) => {
     try {
-      await getApi().createScopeChange(scopeData);
+      await wrapApiCall(getApi().createScopeChange(scopeData));
+      // We still re-fetch for scope changes as they affect multiple fields (actuals/baseline)
+      // but we can do it in the background
+      get().fetchProjects();
       notify('Scope change request created', 'success');
     } catch (error) {
       handleApiError(error, 'Create Scope Change');
@@ -140,7 +232,7 @@ export const useStore = create<AppState>((set, get) => ({
   approveScopeChange: async (scopeChangeId) => {
     set({ loading: true });
     try {
-      await getApi().approveScopeChange(scopeChangeId);
+      await wrapApiCall(getApi().approveScopeChange(scopeChangeId));
       await get().fetchProjects();
       notify('Scope change approved', 'success');
     } catch (error) {
@@ -153,7 +245,8 @@ export const useStore = create<AppState>((set, get) => ({
   deleteScopeChange: async (id) => {
     set({ loading: true });
     try {
-      await getApi().deleteScopeChange(id);
+      await wrapApiCall(getApi().deleteScopeChange(id));
+      await get().fetchProjects();
       notify('Scope change deleted', 'success');
     } catch (error) {
       handleApiError(error, 'Delete Scope Change');
@@ -162,9 +255,89 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  addExpense: async (expense) => {
+    set({ loading: true });
+    try {
+      const newExpense = await wrapApiCall(getApi().addExpense(expense));
+      // Update local state instead of full fetch
+      set((state) => ({
+        expenses: [newExpense, ...state.expenses],
+        loading: false
+      }));
+      // Background fetch projects to update actualCost
+      get().fetchProjects();
+      notify('Expense added', 'success');
+    } catch (error) {
+      handleApiError(error, 'Add Expense');
+      set({ loading: false });
+    }
+  },
+
+  deleteExpense: async (id) => {
+    set({ loading: true });
+    try {
+      await wrapApiCall(getApi().deleteExpense(id));
+      // Update local state
+      set((state) => ({
+        expenses: state.expenses.filter(e => e.id !== id),
+        loading: false
+      }));
+      // Background fetch projects to update actualCost
+      get().fetchProjects();
+      notify('Expense deleted', 'success');
+    } catch (error) {
+      handleApiError(error, 'Delete Expense');
+      set({ loading: false });
+    }
+  },
+
+  uploadDocument: async (projectId, file) => {
+    set({ loading: true });
+    try {
+      const buffer = await file.arrayBuffer();
+      await wrapApiCall(getApi().uploadDocument(
+        projectId, 
+        file.name, 
+        file.type, 
+        file.size, 
+        buffer 
+      ));
+      notify('Document uploaded successfully', 'success');
+    } catch (error) {
+      handleApiError(error, 'Upload Document');
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  downloadDocument: async (documentId) => {
+    try {
+      const success = await wrapApiCall(getApi().downloadDocument(documentId));
+      if (success) {
+        notify('Document downloaded', 'success');
+      }
+    } catch (error) {
+      handleApiError(error, 'Download Document');
+    }
+  },
+
+  deleteDocument: async (documentId) => {
+    set({ loading: true });
+    try {
+      await wrapApiCall(getApi().deleteDocument(documentId));
+      await get().fetchProjects();
+      notify('Document deleted', 'success');
+    } catch (error) {
+      handleApiError(error, 'Delete Document');
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   addClient: async (clientData) => {
     try {
-      await getApi().createClient(clientData);
+      await wrapApiCall(getApi().createClient(clientData));
       await get().fetchClients();
       notify('Client added successfully', 'success');
     } catch (error) {
@@ -175,8 +348,10 @@ export const useStore = create<AppState>((set, get) => ({
 
   updateClient: async (clientData) => {
     try {
-      await getApi().updateClient(clientData);
-      await get().fetchClients();
+      await wrapApiCall(getApi().updateClient(clientData));
+      set((state) => ({
+        clients: state.clients.map((c) => (c.id === clientData.id ? { ...c, ...clientData } : c)),
+      }));
       notify('Client updated', 'success');
     } catch (error) {
       handleApiError(error, 'Update Client');
@@ -184,9 +359,34 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  addProject: async (projectData) => {
+    set({ loading: true });
+    try {
+      await wrapApiCall(getApi().createProject(projectData));
+      await get().fetchProjects();
+      notify('Project created', 'success');
+    } catch (error) {
+      handleApiError(error, 'Create Project');
+      throw error;
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  updateProject: async (projectData) => {
+    try {
+      await wrapApiCall(getApi().updateProject(projectData));
+      await get().fetchProjects();
+      notify('Project updated', 'success');
+    } catch (error) {
+      handleApiError(error, 'Update Project');
+      throw error;
+    }
+  },
+
   createQuote: async (quoteData) => {
     try {
-      await getApi().createQuote(quoteData);
+      await wrapApiCall(getApi().createQuote(quoteData));
       await get().fetchQuotes();
       notify('Quote created successfully', 'success');
     } catch (error) {
@@ -195,10 +395,23 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  duplicateQuote: async (quoteId) => {
+    set({ loading: true });
+    try {
+      await wrapApiCall(getApi().duplicateQuote(quoteId));
+      await get().fetchQuotes();
+      notify('Quote duplicated successfully', 'success');
+    } catch (error) {
+      handleApiError(error, 'Duplicate Quote');
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   approveQuote: async (quoteId) => {
     set({ loading: true });
     try {
-      await getApi().approveQuote(quoteId);
+      await wrapApiCall(getApi().approveQuote(quoteId));
       await Promise.all([get().fetchProjects(), get().fetchQuotes()]);
       notify('Quote approved - Project created', 'success');
     } catch (error) {
@@ -211,7 +424,7 @@ export const useStore = create<AppState>((set, get) => ({
   markInvoicePaid: async (invoiceId) => {
     set({ loading: true });
     try {
-      await getApi().markInvoicePaid(invoiceId);
+      await wrapApiCall(getApi().markInvoicePaid(invoiceId));
       await get().fetchInvoices();
       notify('Invoice marked as paid', 'success');
     } catch (error) {
@@ -224,7 +437,7 @@ export const useStore = create<AppState>((set, get) => ({
   deleteClient: async (id) => {
     set({ loading: true });
     try {
-      await getApi().deleteClient(id);
+      await wrapApiCall(getApi().deleteClient(id));
       await get().fetchClients();
       notify('Client deleted successfully', 'success');
     } catch (error) {
@@ -237,7 +450,7 @@ export const useStore = create<AppState>((set, get) => ({
   deleteQuote: async (id) => {
     set({ loading: true });
     try {
-      await getApi().deleteQuote(id);
+      await wrapApiCall(getApi().deleteQuote(id));
       await get().fetchQuotes();
       notify('Quote deleted successfully', 'success');
     } catch (error) {
@@ -250,7 +463,7 @@ export const useStore = create<AppState>((set, get) => ({
   deleteProject: async (id) => {
     set({ loading: true });
     try {
-      await getApi().deleteProject(id);
+      await wrapApiCall(getApi().deleteProject(id));
       await Promise.all([get().fetchProjects(), get().fetchInvoices()]);
       notify('Project deleted successfully', 'success');
     } catch (error) {
@@ -263,7 +476,7 @@ export const useStore = create<AppState>((set, get) => ({
   deleteInvoice: async (id) => {
     set({ loading: true });
     try {
-      await getApi().deleteInvoice(id);
+      await wrapApiCall(getApi().deleteInvoice(id));
       await get().fetchInvoices();
       notify('Invoice deleted successfully', 'success');
     } catch (error) {
@@ -273,9 +486,50 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  generateInvoice: async (projectId, milestoneIds) => {
+    set({ loading: true });
+    try {
+      const result = await wrapApiCall(getApi().generateInvoice(projectId, milestoneIds));
+      // Update local state
+      set((state) => ({
+        invoices: [result, ...state.invoices],
+        loading: false
+      }));
+      notify('Invoice generated successfully', 'success');
+    } catch (error) {
+      handleApiError(error, 'Generate Invoice');
+      set({ loading: false });
+    }
+  },
+
+  createManualInvoice: async (invoiceData) => {
+    set({ loading: true });
+    try {
+      const result = await wrapApiCall(getApi().createManualInvoice(invoiceData));
+      // Update local state
+      set((state) => ({
+        invoices: [result, ...state.invoices],
+        loading: false
+      }));
+      notify('Manual invoice created', 'success');
+    } catch (error) {
+      handleApiError(error, 'Create Manual Invoice');
+      set({ loading: false });
+    }
+  },
+
+  updateSettings: async (key, value) => {
+    try {
+      await wrapApiCall(getApi().updateSettings(key, value));
+      await get().fetchSettings();
+    } catch (error) {
+      handleApiError(error, 'Update Settings');
+    }
+  },
+
   resetDatabase: async () => {
     try {
-      await getApi().resetDatabase();
+      await wrapApiCall(getApi().resetDatabase());
       notify('Database reset successful', 'success');
       window.location.reload();
     } catch (error) {

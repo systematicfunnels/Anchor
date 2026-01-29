@@ -3,12 +3,12 @@ import {
   LayoutDashboard, 
   Users, 
   Briefcase, 
-  FileText, 
   Receipt, 
-  BarChart3, 
   Settings,
   Search,
-  UserPlus
+  UserPlus,
+  Files,
+  BarChart3
 } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -20,35 +20,37 @@ function cn(...inputs: ClassValue[]) {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '#dashboard' },
-  { icon: Users, label: 'Clients', href: '#clients' },
-  { icon: FileText, label: 'Quotes', href: '#quotes' },
   { icon: Briefcase, label: 'Projects', href: '#projects' },
   { icon: Receipt, label: 'Invoices', href: '#invoices' },
-  { icon: BarChart3, label: 'Reports', href: '#reports' },
+  { icon: Users, label: 'Clients', href: '#clients' },
+  { icon: Files, label: 'Documents', href: '#documents' },
+  { icon: BarChart3, label: 'Unit Economics', href: '#economics' },
   { icon: Settings, label: 'Settings', href: '#settings' },
 ];
 
-export const Sidebar = () => {
+export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
   const [currentHash, setCurrentHash] = useState(window.location.hash || '#dashboard');
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
 
   useEffect(() => {
     const handleHashChange = () => {
-      setCurrentHash(window.location.hash || '#dashboard');
+      const hash = window.location.hash || '#dashboard';
+      setCurrentHash(hash);
+      if (onNavigate) onNavigate();
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [onNavigate]);
 
   return (
-    <div className="w-64 bg-neutral-900 h-screen flex flex-col fixed left-0 top-0 border-r border-neutral-800">
+    <div className="w-[var(--sidebar-width)] bg-neutral-900 h-screen flex flex-col lg:fixed left-0 top-0 border-r border-neutral-800">
       <div className="p-6">
         <h1 className="text-white text-xl font-bold tracking-tight flex items-center gap-2">
           <div className="w-8 h-8 bg-primary-600 rounded flex items-center justify-center">
             <Briefcase className="w-5 h-5 text-white" />
           </div>
-          ServiceOps
+          Anchor
         </h1>
       </div>
 
@@ -114,7 +116,7 @@ export const Sidebar = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">John Doe</p>
-            <p className="text-xs text-neutral-500 truncate">Workspace Admin</p>
+            <p className="text-xs text-neutral-500 truncate">Solo Workspace</p>
           </div>
         </div>
       </div>
