@@ -33,6 +33,7 @@ interface AppState {
   deleteQuote: (id: string) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   deleteInvoice: (id: string) => Promise<void>;
+  resetDatabase: () => Promise<void>;
 }
 
 const notify = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'info') => {
@@ -42,6 +43,11 @@ const notify = (message: string, type: 'success' | 'error' | 'info' | 'warning' 
 const handleApiError = (error: any, context: string) => {
   console.error(`[Store Error: ${context}]`, error);
   notify(`Failed to ${context.toLowerCase()}. Please try again.`, 'error');
+};
+
+const getApi = () => {
+  if (!window.api) throw new Error('Electron API not initialized');
+  return window.api;
 };
 
 export const useStore = create<AppState>((set, get) => ({
@@ -54,8 +60,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchClients: async () => {
     set({ loading: true });
     try {
-      if (!window.api) throw new Error('API not found');
-      const clients = await window.api.getClients();
+      const clients = await getApi().getClients();
       set({ clients, loading: false });
     } catch (error) {
       handleApiError(error, 'Fetch Clients');
@@ -66,8 +71,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchProjects: async () => {
     set({ loading: true });
     try {
-      if (!window.api) throw new Error('API not found');
-      const projects = await window.api.getProjects();
+      const projects = await getApi().getProjects();
       set({ projects, loading: false });
     } catch (error) {
       handleApiError(error, 'Fetch Projects');
@@ -78,8 +82,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchQuotes: async () => {
     set({ loading: true });
     try {
-      if (!window.api) throw new Error('API not found');
-      const quotes = await window.api.getQuotes();
+      const quotes = await getApi().getQuotes();
       set({ quotes, loading: false });
     } catch (error) {
       handleApiError(error, 'Fetch Quotes');
@@ -90,8 +93,7 @@ export const useStore = create<AppState>((set, get) => ({
   fetchInvoices: async () => {
     set({ loading: true });
     try {
-      if (!window.api) throw new Error('API not found');
-      const invoices = await window.api.getInvoices();
+      const invoices = await getApi().getInvoices();
       set({ invoices, loading: false });
     } catch (error) {
       handleApiError(error, 'Fetch Invoices');
@@ -100,14 +102,12 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   getProjectDetails: async (projectId) => {
-    if (!window.api) throw new Error('API not found');
-    return window.api.getProjectDetails(projectId);
+    return getApi().getProjectDetails(projectId);
   },
 
   updateMilestone: async (milestoneData) => {
-    if (!window.api) throw new Error('API not found');
     try {
-      await window.api.updateMilestone(milestoneData);
+      await getApi().updateMilestone(milestoneData);
       notify('Milestone updated', 'success');
     } catch (error) {
       handleApiError(error, 'Update Milestone');
@@ -116,10 +116,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteMilestone: async (id) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.deleteMilestone(id);
+      await getApi().deleteMilestone(id);
       notify('Milestone deleted', 'success');
     } catch (error) {
       handleApiError(error, 'Delete Milestone');
@@ -129,9 +128,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   createScopeChange: async (scopeData) => {
-    if (!window.api) throw new Error('API not found');
     try {
-      await window.api.createScopeChange(scopeData);
+      await getApi().createScopeChange(scopeData);
       notify('Scope change request created', 'success');
     } catch (error) {
       handleApiError(error, 'Create Scope Change');
@@ -140,10 +138,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   approveScopeChange: async (scopeChangeId) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.approveScopeChange(scopeChangeId);
+      await getApi().approveScopeChange(scopeChangeId);
       await get().fetchProjects();
       notify('Scope change approved', 'success');
     } catch (error) {
@@ -154,10 +151,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteScopeChange: async (id) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.deleteScopeChange(id);
+      await getApi().deleteScopeChange(id);
       notify('Scope change deleted', 'success');
     } catch (error) {
       handleApiError(error, 'Delete Scope Change');
@@ -167,9 +163,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   addClient: async (clientData) => {
-    if (!window.api) throw new Error('API not found');
     try {
-      await window.api.createClient(clientData);
+      await getApi().createClient(clientData);
       await get().fetchClients();
       notify('Client added successfully', 'success');
     } catch (error) {
@@ -179,9 +174,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   updateClient: async (clientData) => {
-    if (!window.api) throw new Error('API not found');
     try {
-      await window.api.updateClient(clientData);
+      await getApi().updateClient(clientData);
       await get().fetchClients();
       notify('Client updated', 'success');
     } catch (error) {
@@ -191,9 +185,8 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   createQuote: async (quoteData) => {
-    if (!window.api) throw new Error('API not found');
     try {
-      await window.api.createQuote(quoteData);
+      await getApi().createQuote(quoteData);
       await get().fetchQuotes();
       notify('Quote created successfully', 'success');
     } catch (error) {
@@ -203,10 +196,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   approveQuote: async (quoteId) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.approveQuote(quoteId);
+      await getApi().approveQuote(quoteId);
       await Promise.all([get().fetchProjects(), get().fetchQuotes()]);
       notify('Quote approved - Project created', 'success');
     } catch (error) {
@@ -217,10 +209,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   markInvoicePaid: async (invoiceId) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.markInvoicePaid(invoiceId);
+      await getApi().markInvoicePaid(invoiceId);
       await get().fetchInvoices();
       notify('Invoice marked as paid', 'success');
     } catch (error) {
@@ -231,10 +222,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteClient: async (id) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.deleteClient(id);
+      await getApi().deleteClient(id);
       await get().fetchClients();
       notify('Client deleted successfully', 'success');
     } catch (error) {
@@ -245,10 +235,9 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteQuote: async (id) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.deleteQuote(id);
+      await getApi().deleteQuote(id);
       await get().fetchQuotes();
       notify('Quote deleted successfully', 'success');
     } catch (error) {
@@ -259,11 +248,10 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteProject: async (id) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.deleteProject(id);
-      await get().fetchProjects();
+      await getApi().deleteProject(id);
+      await Promise.all([get().fetchProjects(), get().fetchInvoices()]);
       notify('Project deleted successfully', 'success');
     } catch (error) {
       handleApiError(error, 'Delete Project');
@@ -273,16 +261,25 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   deleteInvoice: async (id) => {
-    if (!window.api) throw new Error('API not found');
     set({ loading: true });
     try {
-      await window.api.deleteInvoice(id);
+      await getApi().deleteInvoice(id);
       await get().fetchInvoices();
       notify('Invoice deleted successfully', 'success');
     } catch (error) {
       handleApiError(error, 'Delete Invoice');
     } finally {
       set({ loading: false });
+    }
+  },
+
+  resetDatabase: async () => {
+    try {
+      await getApi().resetDatabase();
+      notify('Database reset successful', 'success');
+      window.location.reload();
+    } catch (error) {
+      handleApiError(error, 'Reset Database');
     }
   },
 }));

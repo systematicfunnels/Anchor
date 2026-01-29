@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { 
   TrendingUp, 
   Briefcase, 
@@ -27,16 +27,16 @@ export const Dashboard = () => {
   const navigate = (path: string) => { window.location.hash = path; };
   
   // Calculate real stats from state
-  const totalRevenue = invoices
+  const totalRevenue = useMemo(() => invoices
     .filter(inv => inv.status === 'Paid')
-    .reduce((sum, inv) => sum + inv.total, 0);
+    .reduce((sum, inv) => sum + inv.total, 0), [invoices]);
   
-  const activeProjectsCount = projects.filter(p => p.status === 'Active').length;
+  const activeProjectsCount = useMemo(() => projects.filter(p => p.status === 'Active').length, [projects]);
   
-  const upcomingInvoices = invoices.filter(inv => inv.status === 'Sent' || inv.status === 'Draft');
-  const upcomingInvoicesTotal = upcomingInvoices.reduce((sum, inv) => sum + inv.total, 0);
+  const upcomingInvoices = useMemo(() => invoices.filter(inv => inv.status === 'Sent' || inv.status === 'Draft'), [invoices]);
+  const upcomingInvoicesTotal = useMemo(() => upcomingInvoices.reduce((sum, inv) => sum + inv.total, 0), [upcomingInvoices]);
   
-  const marginAlerts = projects.filter(p => p.baselineMargin < 30).length;
+  const marginAlerts = useMemo(() => projects.filter(p => p.baselineMargin < 30).length, [projects]);
 
   const stats = [
     { label: 'Cash Snapshot', value: `$${totalRevenue.toLocaleString()}`, trend: 'Paid', icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50' },

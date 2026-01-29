@@ -227,21 +227,7 @@ export function setupIpcHandlers() {
 
   // Delete Handlers
   ipcMain.handle('delete-client', async (_, id) => {
-    // Delete dependent records first to avoid foreign key constraints
-    await db.delete(quotes).where(eq(quotes.clientId, id));
-    await db.delete(invoices).where(eq(invoices.clientId, id));
-    
-    // For projects, we need to delete milestones and scope changes first
-    const clientProjects = await db.query.projects.findMany({
-      where: eq(projects.clientId, id)
-    });
-    
-    for (const project of clientProjects) {
-      await db.delete(milestones).where(eq(milestones.projectId, project.id));
-      await db.delete(scopeChanges).where(eq(scopeChanges.projectId, project.id));
-    }
-    
-    await db.delete(projects).where(eq(projects.clientId, id));
+    // Leverage database CASCADE constraints defined in schema.ts
     await db.delete(clients).where(eq(clients.id, id));
     return true;
   });
@@ -252,15 +238,7 @@ export function setupIpcHandlers() {
   });
 
   ipcMain.handle('delete-project', async (_, id) => {
-    // Delete dependent records
-    await db.delete(milestones).where(eq(milestones.projectId, id));
-    await db.delete(scopeChanges).where(eq(scopeChanges.projectId, id));
-    
-    // For invoices, we should nullify the project reference instead of deleting the invoice
-    await db.update(invoices)
-      .set({ projectId: null })
-      .where(eq(invoices.projectId, id));
-
+    // Leverage database CASCADE and SET NULL constraints defined in schema.ts
     await db.delete(projects).where(eq(projects.id, id));
     return true;
   });
