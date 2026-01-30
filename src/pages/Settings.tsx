@@ -74,6 +74,21 @@ export const Settings = () => {
     }
   };
 
+  const handleExportDatabase = async () => {
+    try {
+      if (window.api?.exportDatabase) {
+        const success = await window.api.exportDatabase();
+        if (success) {
+          addNotification({ message: 'Database exported successfully', type: 'success' });
+        }
+      } else {
+        addNotification({ message: 'Export is only available in the desktop app', type: 'warning' });
+      }
+    } catch (error) {
+      addNotification({ message: 'Failed to export database', type: 'error' });
+    }
+  };
+
   const tabs = [
     { id: 'Business Profile', icon: Building2, label: 'Business Profile' },
     { id: 'Currency & Tax', icon: Globe, label: 'Currency & Tax' },
@@ -149,6 +164,15 @@ export const Settings = () => {
                     onChange={(e) => handleUpdateSetting('address', e.target.value)}
                     className="w-full bg-white border border-neutral-200 rounded-md px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                   />
+                </div>
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={() => addNotification({ message: 'Profile settings saved automatically', type: 'success' })}
+                    className="flex items-center gap-2 px-4 py-2 bg-[#218091] text-white text-xs font-bold uppercase tracking-widest rounded-md hover:bg-[#1a6573] transition-colors"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    Save Profile
+                  </button>
                 </div>
               </div>
             </Card>
@@ -319,14 +343,20 @@ export const Settings = () => {
                       <div className="text-xs text-neutral-500">Current size: 2.4 MB</div>
                     </div>
                   </div>
-                  <button className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-white border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors">
+                  <button 
+                    onClick={handleExportDatabase}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium bg-white border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors"
+                  >
                     <Download className="w-3.5 h-3.5" />
                     Export DB
                   </button>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
-                  <button className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium bg-white border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors">
+                  <button 
+                    onClick={handleExportDatabase}
+                    className="flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium bg-white border border-neutral-200 rounded-md hover:bg-neutral-50 transition-colors"
+                  >
                     <Save className="w-4 h-4" />
                     Create Manual Backup
                   </button>

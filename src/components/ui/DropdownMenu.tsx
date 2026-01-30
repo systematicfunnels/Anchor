@@ -36,6 +36,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({ items, trigger, alig
     <div className="relative inline-block text-left" ref={menuRef}>
       <div 
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           setIsOpen(!isOpen);
         }} 
@@ -47,7 +48,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({ items, trigger, alig
       {isOpen && (
         <div
           className={clsx(
-            'absolute z-[200] mt-2 min-w-[160px] bg-white rounded-lg shadow-xl border border-neutral-100 py-1 animate-in fade-in zoom-in-95 duration-100 origin-top-right',
+            'absolute z-[9999] mt-2 min-w-[160px] bg-white rounded-lg shadow-xl border border-neutral-100 py-1 animate-in fade-in zoom-in-95 duration-100 origin-top-right',
             align === 'right' ? 'right-0' : 'left-0'
           )}
         >
@@ -55,6 +56,7 @@ export const DropdownMenu: React.FC<DropdownMenuProps> = ({ items, trigger, alig
             <button
               key={index}
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 if (!item.disabled) {
                   item.onClick();

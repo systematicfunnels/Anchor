@@ -17,6 +17,7 @@ export const ProjectModal = ({ isOpen, onClose, project, initialClientId }: Proj
   const { getCurrencySymbol, currencies } = useCurrency();
   const { updateProject, clients, updateClient, addProject } = useStore();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     status: 'Active' as ProjectStatus,
@@ -51,6 +52,13 @@ export const ProjectModal = ({ isOpen, onClose, project, initialClientId }: Proj
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    if (formData.baselinePrice < formData.baselineCost) {
+      setError('Quoted Price cannot be less than Baseline Cost.');
+      return;
+    }
+
     setLoading(true);
     
     try {
@@ -85,6 +93,11 @@ export const ProjectModal = ({ isOpen, onClose, project, initialClientId }: Proj
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600 font-medium">{error}</p>
+            </div>
+          )}
           {!project && (
             <div>
               <label htmlFor="project-client" className="block text-sm font-medium text-neutral-700 mb-1">Client *</label>
@@ -179,6 +192,19 @@ export const ProjectModal = ({ isOpen, onClose, project, initialClientId }: Proj
             </select>
           </div>
 
+          <div>
+            <label htmlFor="project-description" className="block text-sm font-medium text-neutral-700 mb-1">Description</label>
+            <textarea
+              id="project-description"
+              name="description"
+              rows={3}
+              className="w-full px-3 py-2 border border-neutral-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+              placeholder="Project goals, scope, or notes..."
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="project-cost" className="block text-sm font-medium text-neutral-700 mb-1">
@@ -230,7 +256,7 @@ export const ProjectModal = ({ isOpen, onClose, project, initialClientId }: Proj
 
           <div className="pt-6 border-t border-neutral-100 flex justify-end gap-3">
             <Button type="button" intent="secondary" onClick={onClose}>Cancel</Button>
-            <Button type="submit" loading={loading}>Save Changes</Button>
+            <Button type="submit" loading={loading}>Save Project</Button>
           </div>
         </form>
       </div>

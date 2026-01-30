@@ -3,15 +3,17 @@ import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
-import { Plus, Receipt, Download, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { Plus, Receipt, Download, CheckCircle, Clock, Trash2, Archive, MoreVertical } from 'lucide-react';
 import { InvoiceModal } from '../components/invoices/InvoiceModal';
 import { useCurrency } from '../hooks/useCurrency';
+import { DropdownMenu } from '../components/ui/DropdownMenu';
 
 export const Invoices = () => {
   const { formatCurrency } = useCurrency();
-  const { invoices, fetchInvoices, loading, markInvoicePaid, deleteInvoice } = useStore();
+  const { invoices, fetchInvoices, loading, markInvoicePaid, deleteInvoice, archiveInvoice } = useStore();
   const [confirmPaidId, setConfirmPaidId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
@@ -36,6 +38,15 @@ export const Invoices = () => {
     }
   };
 
+  const handleArchive = async (id: string) => {
+    try {
+      await archiveInvoice(id);
+      setConfirmArchiveId(null);
+    } catch (error) {
+      // Handled by store
+    }
+  };
+
   return (
     <div className="page-container">
       <div className="flex items-center justify-between">
@@ -48,7 +59,7 @@ export const Invoices = () => {
           className="gap-2"
         >
           <Plus className="w-4 h-4" />
-          Create Invoice
+          New Invoice
         </Button>
       </div>
 
@@ -56,7 +67,7 @@ export const Invoices = () => {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
-      ) : invoices.length === 0 ? (
+      ) : invoices.filter(i => i.status !== 'Archived').length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-12 px-6 text-center border-dashed">
           <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
             <Receipt className="w-8 h-8 text-neutral-400" />
@@ -66,11 +77,11 @@ export const Invoices = () => {
             Generate invoices from completed milestones or project roadmaps.
           </p>
           <Button intent="secondary" className="mt-6" onClick={() => setIsModalOpen(true)}>
-            Create First Invoice
+            New Invoice
           </Button>
         </Card>
       ) : (
-        <Card className="overflow-hidden">
+        <Card className="shadow-sm">
           <CardContent className="p-0">
             <table className="min-w-full">
               <thead>
@@ -84,7 +95,7 @@ export const Invoices = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {invoices.map((invoice) => (
+                {invoices.filter(i => i.status !== 'Archived').map((invoice) => (
                   <tr key={invoice.id} className="hover:bg-neutral-50 transition-colors">
                     <td className="px-4 py-3 font-bold">{invoice.invoiceNumber}</td>
                     <td className="px-4 py-3">{invoice.client?.name}</td>
@@ -102,35 +113,36 @@ export const Invoices = () => {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {invoice.status !== 'Paid' && (
-                          <Button 
-                            intent="primary" 
-                            size="sm"
-                            onClick={() => setConfirmPaidId(invoice.id)}
-                            title="Mark as Paid"
-                          >
-                            Mark Paid
-                          </Button>
-                        )}
-                        <Button 
-                          intent="secondary" 
-                          size="sm" 
-                          className="p-1.5"
-                          title="Download PDF"
-                        >
+                        <Button intent="secondary" size="sm" className="h-8 w-8 p-0" title="Download PDF">
                           <Download className="w-4 h-4" />
                         </Button>
-                        <Button 
-                          intent="secondary" 
-                          size="sm" 
-                          className="p-1.5 text-red-600 hover:text-red-700"
-                          onClick={() => setConfirmDeleteId(invoice.id)}
-                          title="Delete Invoice"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
+                        <DropdownMenu
+                          trigger={
+                            <button className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          }
+                        items={[
+                          ...(invoice.status !== 'Paid' ? [{
+                            label: 'Mark as Paid',
+                            icon: <CheckCircle className="w-4 h-4" />,
+                            onClick: () => setConfirmPaidId(invoice.id)
+                          }] : []),
+                          {
+                            label: 'Archive',
+                            icon: <Archive className="w-4 h-4" />,
+                            onClick: () => setConfirmArchiveId(invoice.id)
+                          },
+                          {
+                            label: 'Delete',
+                            icon: <Trash2 className="w-4 h-4" />,
+                            variant: 'danger',
+                            onClick: () => setConfirmDeleteId(invoice.id)
+                          }
+                        ]}
+                      />
+                    </div>
+                  </td>
                   </tr>
                 ))}
               </tbody>
@@ -139,18 +151,24 @@ export const Invoices = () => {
         </Card>
       )}
 
-      <InvoiceModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-      />
+      <InvoiceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
 
       <ConfirmationDialog
         isOpen={!!confirmPaidId}
         onClose={() => setConfirmPaidId(null)}
         onConfirm={() => confirmPaidId && handleMarkPaid(confirmPaidId)}
         title="Mark as Paid"
-        description="Are you sure you want to mark this invoice as paid? This will update the project revenue and cash flow metrics."
+        description="Are you sure you want to mark this invoice as paid?"
         confirmText="Mark as Paid"
+      />
+
+      <ConfirmationDialog
+        isOpen={!!confirmArchiveId}
+        onClose={() => setConfirmArchiveId(null)}
+        onConfirm={() => confirmArchiveId && handleArchive(confirmArchiveId)}
+        title="Archive Invoice"
+        description="Are you sure you want to archive this invoice? It will be hidden from the active list but its financial data will be preserved."
+        confirmText="Archive Invoice"
       />
 
       <ConfirmationDialog

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
-import { Briefcase, TrendingUp, AlertTriangle, Trash2, MoreVertical, Edit2, Plus } from 'lucide-react';
+import { Briefcase, TrendingUp, AlertTriangle, Trash2, MoreVertical, Edit2, Plus, Archive } from 'lucide-react';
 import { calculateMargin, getMarginColor } from '../lib/finance';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { ProjectModal } from '../components/projects/ProjectModal';
@@ -11,8 +11,9 @@ import { useCurrency } from '../hooks/useCurrency';
 
 export const Projects = () => {
   const { formatCurrency } = useCurrency();
-  const { projects, fetchProjects, deleteProject, loading } = useStore();
+  const { projects, fetchProjects, deleteProject, archiveProject, loading } = useStore();
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+  const [projectToArchive, setProjectToArchive] = useState<string | null>(null);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [initialClientId, setInitialClientId] = useState<string | undefined>();
@@ -25,6 +26,13 @@ export const Projects = () => {
     if (projectToDelete) {
       await deleteProject(projectToDelete);
       setProjectToDelete(null);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (projectToArchive) {
+      await archiveProject(projectToArchive);
+      setProjectToArchive(null);
     }
   };
 
@@ -70,32 +78,40 @@ export const Projects = () => {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
-      ) : projects.length === 0 ? (
+      ) : projects.filter(p => p.status !== 'Archived').length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-16 px-6 text-center border-dashed border-2">
           <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
             <Briefcase className="w-8 h-8 text-neutral-400" />
           </div>
           <h3 className="text-lg font-bold text-neutral-900">No active projects yet</h3>
           <p className="text-neutral-500 max-w-sm mt-2 text-sm">
-            Projects are created automatically when a quote is approved by a client.
+            Projects can be created automatically from quotes, or manually using the button below.
           </p>
-          <button 
-            onClick={() => navigate('#quotes')}
-            className="mt-6 bg-white border border-neutral-200 text-neutral-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-neutral-50 transition-all shadow-sm"
-          >
-            Go to Quotes
-          </button>
+          <div className="flex gap-3 mt-6">
+            <button 
+              onClick={() => setIsModalOpen(true)}
+              className="bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-700 transition-all shadow-md shadow-primary-500/20"
+            >
+              New Project
+            </button>
+            <button 
+              onClick={() => navigate('#quotes')}
+              className="bg-white border border-neutral-200 text-neutral-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-neutral-50 transition-all shadow-sm"
+            >
+              Go to Quotes
+            </button>
+          </div>
         </Card>
       ) : (
         <div className="space-y-[var(--spacing-card-gap)]">
-          {projects.map((project) => {
+          {projects.filter(p => p.status !== 'Archived').map((project) => {
             const currentMargin = calculateMargin(project.baselinePrice, project.actualCost || project.baselineCost);
             const marginDrift = currentMargin - project.baselineMargin;
 
             return (
               <div 
                 key={project.id} 
-                className="cursor-pointer hover:shadow-md transition-shadow rounded-xl overflow-hidden"
+                className="cursor-pointer hover:shadow-md transition-shadow rounded-xl overflow-hidden group"
                 onClick={() => window.location.hash = `#projects/${project.id}`}
               >
                 <Card className="border-l-4 border-l-primary-600 h-full">
@@ -111,10 +127,12 @@ export const Projects = () => {
                           </span>
                           <h3 className="text-lg font-bold text-neutral-900">{project.name}</h3>
                         </div>
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity relative">
                           <DropdownMenu
                             trigger={
-                              <button className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-md transition-colors">
+                              <button 
+                                className="p-1.5 text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 rounded-md transition-colors"
+                              >
                                 <MoreVertical className="w-4 h-4" />
                               </button>
                             }
@@ -123,6 +141,11 @@ export const Projects = () => {
                                 label: 'Edit Project',
                                 icon: <Edit2 className="w-4 h-4" />,
                                 onClick: () => handleEdit(project)
+                              },
+                              {
+                                label: 'Archive Project',
+                                icon: <Archive className="w-4 h-4" />,
+                                onClick: () => setProjectToArchive(project.id)
                               },
                               {
                                 label: 'Delete Project',
@@ -188,6 +211,15 @@ export const Projects = () => {
         onClose={handleCloseModal}
         project={projectToEdit}
         initialClientId={initialClientId}
+      />
+
+      <ConfirmationDialog
+        isOpen={!!projectToArchive}
+        onClose={() => setProjectToArchive(null)}
+        onConfirm={handleArchive}
+        title="Archive Project"
+        description="Are you sure you want to archive this project? It will be hidden from the active roadmap but its financial history will be preserved."
+        confirmText="Archive Project"
       />
 
       <ConfirmationDialog

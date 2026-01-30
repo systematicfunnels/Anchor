@@ -62,7 +62,7 @@ export const InvoiceModal = ({ isOpen, onClose }: InvoiceModalProps) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
         <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
-          <h3 className="text-lg font-bold">Create Manual Invoice</h3>
+          <h3 className="text-lg font-bold">New Invoice</h3>
           <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 transition-colors">
             <X className="w-5 h-5" />
           </button>
@@ -141,7 +141,7 @@ export const InvoiceModal = ({ isOpen, onClose }: InvoiceModalProps) => {
               Cancel
             </Button>
             <Button type="submit" disabled={loading || !formData.clientId || !formData.subtotal}>
-              {loading ? 'Creating...' : 'Create Invoice'}
+              {loading ? 'Saving...' : 'Save Invoice'}
             </Button>
           </div>
         </form>

@@ -20,7 +20,8 @@ const store: any = {
     paymentTerms: '30'
   },
   milestones: [],
-  scopeChanges: []
+  scopeChanges: [],
+  auditTrail: []
 };
 
 export const browserApi: IElectronAPI = {
@@ -77,6 +78,10 @@ export const browserApi: IElectronAPI = {
     store.quotes.push(quote);
     return quote;
   },
+  updateQuote: async ({ id, ...data }) => {
+    const index = store.quotes.findIndex((q: any) => q.id === id);
+    if (index !== -1) store.quotes[index] = { ...store.quotes[index], ...data };
+  },
   approveQuote: async (quoteId) => {
     const quote = store.quotes.find((q: any) => q.id === quoteId);
     const project = {
@@ -111,6 +116,10 @@ export const browserApi: IElectronAPI = {
   },
 
   getInvoices: async () => store.invoices,
+  updateInvoice: async ({ id, ...data }) => {
+    const index = store.invoices.findIndex((i: any) => i.id === id);
+    if (index !== -1) store.invoices[index] = { ...store.invoices[index], ...data };
+  },
   markInvoicePaid: async (id) => {
     const invoice = store.invoices.find((i: any) => i.id === id);
     if (invoice) invoice.status = 'Paid';
@@ -206,5 +215,10 @@ export const browserApi: IElectronAPI = {
     });
     return true;
   },
+  exportDatabase: async () => {
+    console.log('Database export not supported in browser');
+    return true;
+  },
+  getAuditTrail: async () => store.auditTrail || [],
   onMessage: () => {}
 };

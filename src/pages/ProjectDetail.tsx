@@ -14,11 +14,16 @@ import {
   FileText,
   Upload,
   Download,
-  File
+  File,
+  MoreVertical,
+  Archive,
+  Edit2
 } from 'lucide-react';
 import { calculateMargin, getMarginColor } from '../lib/finance';
 import { Project, Milestone, ScopeChange, Document, Expense } from '../types';
 import { useCurrency } from '../hooks/useCurrency';
+import { DropdownMenu } from '../components/ui/DropdownMenu';
+import { ProjectModal } from '../components/projects/ProjectModal';
 
 export const ProjectDetail = () => {
   const { formatCurrency, getCurrencySymbol } = useCurrency();
@@ -37,11 +42,16 @@ export const ProjectDetail = () => {
     deleteDocument,
     addExpense,
     deleteExpense,
-    generateInvoice
+    generateInvoice,
+    archiveProject,
+    deleteProject
   } = useStore();
   const { addNotification } = useNotificationStore();
   
   const [project, setProject] = useState<Project & { milestones: Milestone[], scopeChanges: ScopeChange[], documents: Document[], expenses: Expense[] } | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [projectToArchive, setProjectToArchive] = useState<string | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [showScopeModal, setShowScopeModal] = useState(false);
@@ -171,6 +181,22 @@ export const ProjectDetail = () => {
     }
   };
 
+  const handleArchive = async () => {
+    if (!projectToArchive) return;
+    await archiveProject(projectToArchive);
+    setProjectToArchive(null);
+    addNotification({ type: 'success', message: 'Project archived' });
+    navigate('#projects');
+  };
+
+  const handleDelete = async () => {
+    if (!projectToDelete) return;
+    await deleteProject(projectToDelete);
+    setProjectToDelete(null);
+    addNotification({ type: 'success', message: 'Project deleted' });
+    navigate('#projects');
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>;
   
   if (!project) return (
@@ -223,6 +249,31 @@ export const ProjectDetail = () => {
                   Completed (Testing Enabled)
                 </span>
               )}
+              <DropdownMenu
+                trigger={
+                  <button className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500">
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                }
+                items={[
+                  { 
+                    label: 'Edit Project', 
+                    icon: <Edit2 className="w-4 h-4" />, 
+                    onClick: () => setIsEditModalOpen(true) 
+                  },
+                  { 
+                    label: 'Archive Project', 
+                    icon: <Archive className="w-4 h-4" />, 
+                    onClick: () => setProjectToArchive(project.id) 
+                  },
+                  { 
+                    label: 'Delete Project', 
+                    icon: <Trash2 className="w-4 h-4" />, 
+                    onClick: () => setProjectToDelete(project.id), 
+                    variant: 'danger' 
+                  }
+                ]}
+              />
             </div>
             <p className="text-neutral-500">Client: {project.client?.name}</p>
           </div>
@@ -233,14 +284,14 @@ export const ProjectDetail = () => {
             className="flex items-center gap-2 bg-white border border-neutral-200 px-4 py-2 rounded-lg text-sm font-bold hover:bg-neutral-50"
           >
             <Plus className="w-4 h-4" />
-            Scope Change
+            New Scope Change
           </button>
           <button 
             onClick={() => setShowExpenseModal(true)}
             className="flex items-center gap-2 bg-white border border-neutral-200 px-4 py-2 rounded-lg text-sm font-bold hover:bg-neutral-50"
           >
             <Plus className="w-4 h-4" />
-            Log Expense
+            New Expense
           </button>
           <button 
             onClick={handleGenerateInvoice}
@@ -252,7 +303,7 @@ export const ProjectDetail = () => {
             ) : (
               <FileText className="w-4 h-4" />
             )}
-            {selectedMilestones.length > 0 ? `Bill Selected (${selectedMilestones.length})` : 'Bill Project'}
+            {selectedMilestones.length > 0 ? `Bill Selected (${selectedMilestones.length})` : 'New Invoice'}
           </button>
         </div>
       </div>
@@ -338,7 +389,7 @@ export const ProjectDetail = () => {
                 className="text-primary-600 hover:text-primary-700 text-sm font-bold flex items-center gap-1"
               >
                 <Plus className="w-4 h-4" />
-                Add Expense
+                New Expense
               </button>
             )}
           </div>
@@ -744,6 +795,33 @@ export const ProjectDetail = () => {
         title="Delete Document"
         description="Are you sure you want to delete this document? This action cannot be undone."
         confirmText="Delete Document"
+        intent="danger"
+      />
+
+      {project && (
+        <ProjectModal 
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          project={project}
+        />
+      )}
+
+      <ConfirmationDialog
+        isOpen={!!projectToArchive}
+        onClose={() => setProjectToArchive(null)}
+        onConfirm={handleArchive}
+        title="Archive Project"
+        description="Are you sure you want to archive this project? It will be hidden from the active list but its data will be preserved."
+        confirmText="Archive Project"
+      />
+
+      <ConfirmationDialog
+        isOpen={!!projectToDelete}
+        onClose={() => setProjectToDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Project"
+        description="Are you sure you want to delete this project? This will also delete all associated milestones, scope changes, and expenses. This action cannot be undone."
+        confirmText="Delete Project"
         intent="danger"
       />
     </div>

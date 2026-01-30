@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Client, Project, Quote, Invoice, Milestone, ScopeChange, Document, Expense, Currency } from '../types';
+import { Client, Project, Quote, Invoice, Milestone, ScopeChange, Document, Expense, Currency, AuditLog } from '../types';
 import { useNotificationStore } from './useNotificationStore';
 
 interface AppState {
@@ -9,6 +9,7 @@ interface AppState {
   invoices: Invoice[];
   expenses: Expense[];
   settings: Record<string, string>;
+  auditLogs: AuditLog[];
   loading: boolean;
   
   // View mode for currency exchange check
@@ -21,6 +22,7 @@ interface AppState {
   fetchInvoices: () => Promise<void>;
   fetchExpenses: () => Promise<void>;
   fetchSettings: () => Promise<void>;
+  fetchAuditLogs: () => Promise<void>;
   
   getProjectDetails: (projectId: string) => Promise<Project & { 
     milestones: Milestone[], 
@@ -52,6 +54,7 @@ interface AppState {
   createQuote: (quote: Partial<Quote>) => Promise<void>;
   duplicateQuote: (quoteId: string) => Promise<void>;
   approveQuote: (quoteId: string) => Promise<void>;
+  updateQuote: (quote: Partial<Quote> & { id: string }) => Promise<void>;
   
   markInvoicePaid: (invoiceId: string) => Promise<void>;
   generateInvoice: (projectId: string, milestoneIds: string[]) => Promise<void>;
@@ -60,9 +63,13 @@ interface AppState {
   updateSettings: (key: string, value: string) => Promise<void>;
 
   deleteClient: (id: string) => Promise<void>;
+  archiveClient: (id: string) => Promise<void>;
   deleteQuote: (id: string) => Promise<void>;
+  archiveQuote: (id: string) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
+  archiveProject: (id: string) => Promise<void>;
   deleteInvoice: (id: string) => Promise<void>;
+  archiveInvoice: (id: string) => Promise<void>;
   resetDatabase: () => Promise<void>;
 }
 
@@ -71,9 +78,9 @@ const notify = (message: string, type: 'success' | 'error' | 'info' | 'warning' 
 };
 
 const handleApiError = (error: any, context: string) => {
-  const isAppError = error && typeof error === 'object' && error.__isAppError;
+  const isAppError = error && typeof error === 'object' && (error.__isAppError || error.code);
   const message = isAppError ? error.message : `Failed to ${context.toLowerCase()}. Please try again.`;
-  const type = isAppError && error.code === 'VALIDATION_ERROR' ? 'warning' : 'error';
+  const type = isAppError && (error.code === 'VALIDATION_ERROR' || error.code === 'NOT_FOUND') ? 'warning' : 'error';
   
   console.error(`[Store Error: ${context}]`, error);
   notify(message, type);
@@ -89,7 +96,13 @@ const getApi = () => {
 
 const wrapApiCall = async (apiCall: Promise<any>) => {
   const result = await apiCall;
-  if (result && result.__isAppError) throw result;
+  if (result && typeof result === 'object') {
+    if ('success' in result) {
+      if (!result.success) throw result.error;
+      return result.data;
+    }
+    if (result.__isAppError) throw result;
+  }
   return result;
 };
 
@@ -100,6 +113,7 @@ export const useStore = create<AppState>((set, get) => ({
   invoices: [],
   expenses: [],
   settings: {},
+  auditLogs: [],
   loading: false,
   viewCurrency: null,
 
@@ -166,6 +180,15 @@ export const useStore = create<AppState>((set, get) => ({
       set({ settings: result });
     } catch (error) {
       handleApiError(error, 'Fetch Settings');
+    }
+  },
+
+  fetchAuditLogs: async () => {
+    try {
+      const result = await wrapApiCall(getApi().getAuditTrail());
+      set({ auditLogs: result });
+    } catch (error) {
+      handleApiError(error, 'Fetch Audit Logs');
     }
   },
 
@@ -395,6 +418,17 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  updateQuote: async (quoteData) => {
+    try {
+      await wrapApiCall(getApi().updateQuote(quoteData));
+      await get().fetchQuotes();
+      notify('Quote updated successfully', 'success');
+    } catch (error) {
+      handleApiError(error, 'Update Quote');
+      throw error;
+    }
+  },
+
   duplicateQuote: async (quoteId) => {
     set({ loading: true });
     try {
@@ -447,6 +481,19 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  archiveClient: async (id) => {
+    set({ loading: true });
+    try {
+      await wrapApiCall(getApi().updateClient({ id, status: 'Archived' }));
+      await get().fetchClients();
+      notify('Client archived', 'success');
+    } catch (error) {
+      handleApiError(error, 'Archive Client');
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   deleteQuote: async (id) => {
     set({ loading: true });
     try {
@@ -455,6 +502,19 @@ export const useStore = create<AppState>((set, get) => ({
       notify('Quote deleted successfully', 'success');
     } catch (error) {
       handleApiError(error, 'Delete Quote');
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  archiveQuote: async (id) => {
+    set({ loading: true });
+    try {
+      await wrapApiCall(getApi().updateQuote({ id, status: 'Archived' }));
+      await get().fetchQuotes();
+      notify('Quote archived', 'success');
+    } catch (error) {
+      handleApiError(error, 'Archive Quote');
     } finally {
       set({ loading: false });
     }
@@ -473,6 +533,19 @@ export const useStore = create<AppState>((set, get) => ({
     }
   },
 
+  archiveProject: async (id) => {
+    set({ loading: true });
+    try {
+      await wrapApiCall(getApi().updateProject({ id, status: 'Archived' }));
+      await get().fetchProjects();
+      notify('Project archived', 'success');
+    } catch (error) {
+      handleApiError(error, 'Archive Project');
+    } finally {
+      set({ loading: false });
+    }
+  },
+
   deleteInvoice: async (id) => {
     set({ loading: true });
     try {
@@ -481,6 +554,19 @@ export const useStore = create<AppState>((set, get) => ({
       notify('Invoice deleted successfully', 'success');
     } catch (error) {
       handleApiError(error, 'Delete Invoice');
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  archiveInvoice: async (id) => {
+    set({ loading: true });
+    try {
+      await wrapApiCall(getApi().updateInvoice({ id, status: 'Archived' }));
+      await get().fetchInvoices();
+      notify('Invoice archived', 'success');
+    } catch (error) {
+      handleApiError(error, 'Archive Invoice');
     } finally {
       set({ loading: false });
     }

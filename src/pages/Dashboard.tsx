@@ -4,7 +4,10 @@ import {
   Briefcase, 
   Receipt,
   Plus,
-  BarChart3
+  BarChart3,
+  History,
+  User,
+  FileText
 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/Card';
 import { useStore } from '../store/useStore';
@@ -17,26 +20,41 @@ export const Dashboard = () => {
     projects, 
     invoices, 
     fetchProjects, 
-    fetchInvoices 
+    fetchInvoices,
+    auditLogs,
+    fetchAuditLogs
   } = useStore();
 
   useEffect(() => {
     fetchProjects();
     fetchInvoices();
-  }, [fetchProjects, fetchInvoices]);
+    fetchAuditLogs();
+  }, [fetchProjects, fetchInvoices, fetchAuditLogs]);
 
   const navigate = (path: string) => { window.location.hash = path; };
+
+  const getEntityIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'client': return User;
+      case 'project': return Briefcase;
+      case 'quote': return FileText;
+      case 'invoice': return Receipt;
+      default: return History;
+    }
+  };
   
   // Calculate real stats from state
   const totalRevenue = useMemo(() => invoices
     .filter(inv => inv.status === 'Paid')
     .reduce((sum, inv) => sum + inv.total, 0), [invoices]);
   
-  const avgMargin = useMemo(() => projects.length > 0 
-    ? projects.reduce((sum, p) => sum + p.baselineMargin, 0) / projects.length 
-    : 0, [projects]);
+  const activeProjects = useMemo(() => projects.filter(p => p.status !== 'Archived'), [projects]);
+  
+  const avgMargin = useMemo(() => activeProjects.length > 0 
+    ? activeProjects.reduce((sum, p) => sum + p.baselineMargin, 0) / activeProjects.length 
+    : 0, [activeProjects]);
 
-  const activeProjectsCount = useMemo(() => projects.filter(p => p.status === 'Active').length, [projects]);
+  const activeProjectsCount = useMemo(() => activeProjects.filter(p => p.status === 'Active').length, [activeProjects]);
   
   const upcomingInvoices = useMemo(() => invoices.filter(inv => inv.status === 'Sent' || inv.status === 'Draft'), [invoices]);
   const upcomingInvoicesTotal = useMemo(() => upcomingInvoices.reduce((sum, inv) => sum + inv.total, 0), [upcomingInvoices]);
@@ -71,7 +89,7 @@ export const Dashboard = () => {
               onClick={() => navigate('#clients')}
               className="mt-2 bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-700 transition-all"
             >
-              Add Your First Client
+              New Client
             </button>
           </Card>
 
@@ -119,7 +137,7 @@ export const Dashboard = () => {
             className="flex-1 sm:flex-none bg-primary-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary-700 transition-all shadow-md shadow-primary-500/20 flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4" />
-            Create New Quote
+            New Quote
           </button>
         </div>
       </div>
@@ -141,6 +159,42 @@ export const Dashboard = () => {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      <div className="mt-8">
+        <div className="flex items-center gap-2 mb-4">
+          <History className="w-5 h-5 text-neutral-400" />
+          <h3 className="text-lg font-bold text-neutral-900">Recent Activity</h3>
+        </div>
+        <Card className="divide-y divide-neutral-100">
+          {auditLogs.length > 0 ? (
+            auditLogs.map((log) => {
+              const Icon = getEntityIcon(log.entityType);
+              return (
+                <div key={log.id} className="p-4 flex items-center gap-4 hover:bg-neutral-50 transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-5 h-5 text-neutral-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-900 truncate">
+                      {log.action}
+                    </p>
+                    <p className="text-xs text-neutral-500 truncate">
+                      {log.details}
+                    </p>
+                  </div>
+                  <div className="text-xs text-neutral-400 whitespace-nowrap">
+                    {new Date(log.timestamp).toLocaleDateString()}
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-8 text-center text-neutral-500 text-sm italic">
+              No recent activity recorded.
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );

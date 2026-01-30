@@ -5,21 +5,22 @@ import { eq } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs/promises';
-import { AppError } from '../../src/types';
 
 const handleIpc = (handler: (...args: any[]) => Promise<any>) => {
   return async (event: any, ...args: any[]) => {
     try {
-      return await handler(event, ...args);
+      const result = await handler(event, ...args);
+      return { success: true, data: result };
     } catch (error: any) {
       console.error('IPC Error:', error);
-      const appError: AppError = {
-        __isAppError: true,
-        code: error.code || 'DATABASE_ERROR',
-        message: error.message || 'An unexpected error occurred',
-        details: error.stack
+      return { 
+        success: false, 
+        error: {
+          code: error.code || 'DATABASE_ERROR',
+          message: error.message || 'An unexpected error occurred',
+          details: error.stack
+        } 
       };
-      return appError;
     }
   };
 };
@@ -69,61 +70,94 @@ export function setupIpcHandlers() {
   ipcMain.handle('get-quotes', handleIpc(async () => {
     return db.query.quotes.findMany({
       with: {
-        client: true
+        client: true,
+        items: true
       }
     });
   }));
 
-  ipcMain.handle('create-quote', handleIpc(async (_, quoteData) => {
+  ipcMain.handle('create-quote', handleIpc(async (_, { items, ...quoteData }) => {
+    const quoteId = uuidv4();
     const newQuote = {
       ...quoteData,
-      id: uuidv4(),
+      id: quoteId,
       version: 1,
-      status: 'Draft',
+      status: quoteData.status || 'Draft',
       createdAt: new Date(),
     };
-    await db.insert(quotes).values(newQuote);
-    return newQuote;
+
+    return db.transaction((tx) => {
+      tx.insert(quotes).values(newQuote).run();
+      
+      if (items && items.length > 0) {
+        for (const item of items) {
+          tx.insert(quoteItems).values({
+            ...item,
+            name: item.description || '', // Satisfy NOT NULL constraint if it exists in local DB
+            id: item.id || uuidv4(),
+            quoteId: quoteId,
+          }).run();
+        }
+      }
+      
+      return { ...newQuote, items: items || [] };
+    });
+  }));
+
+  ipcMain.handle('update-quote', handleIpc(async (_, { id, items, ...data }) => {
+    return db.transaction((tx) => {
+      // Update quote header
+      tx.update(quotes)
+        .set(data)
+        .where(eq(quotes.id, id))
+        .run();
+
+      // Update items: delete existing and insert new
+      if (items) {
+        tx.delete(quoteItems).where(eq(quoteItems.quoteId, id)).run();
+        if (items.length > 0) {
+          for (const item of items) {
+            tx.insert(quoteItems).values({
+              ...item,
+              name: item.description || '', // Satisfy NOT NULL constraint if it exists in local DB
+              id: item.id || uuidv4(),
+              quoteId: id,
+            }).run();
+          }
+        }
+      }
+      return true;
+    });
   }));
 
   ipcMain.handle('duplicate-quote', handleIpc(async (_, quoteId) => {
-    return await db.transaction(async (tx) => {
-      const quote = await tx.query.quotes.findFirst({
-        where: eq(quotes.id, quoteId),
-        with: {
-          items: true
-        }
-      });
+    return db.transaction((tx) => {
+      const quote = tx.select().from(quotes).where(eq(quotes.id, quoteId)).get();
 
       if (!quote) throw new Error('Quote not found');
 
+      const items = tx.select().from(quoteItems).where(eq(quoteItems.quoteId, quoteId)).all();
+
       const newQuoteId = uuidv4();
       const newQuote = {
-        clientId: quote.clientId,
+        ...quote,
         name: `${quote.name} (Copy)`,
         version: 1,
         status: 'Draft' as const,
-        totalCost: quote.totalCost,
-        totalPrice: quote.totalPrice,
-        margin: quote.margin,
-        validUntil: quote.validUntil,
         id: newQuoteId,
         createdAt: new Date(),
       };
 
-      await tx.insert(quotes).values(newQuote);
+      tx.insert(quotes).values(newQuote).run();
 
-      if (quote.items && quote.items.length > 0) {
-        for (const item of quote.items) {
-          await tx.insert(quoteItems).values({
+      if (items && items.length > 0) {
+        for (const item of items) {
+          tx.insert(quoteItems).values({
+            ...item,
+            name: item.description || '', // Satisfy NOT NULL constraint if it exists in local DB
             id: uuidv4(),
             quoteId: newQuoteId,
-            name: item.name,
-            description: item.description,
-            estimatedHours: item.estimatedHours,
-            estimatedCost: item.estimatedCost,
-            price: item.price,
-          });
+          }).run();
         }
       }
 
@@ -132,20 +166,18 @@ export function setupIpcHandlers() {
   }));
 
   ipcMain.handle('approve-quote', handleIpc(async (_, quoteId) => {
-    return await db.transaction(async (tx) => {
-      const quote = await tx.query.quotes.findFirst({
-        where: eq(quotes.id, quoteId),
-        with: {
-          items: true
-        }
-      });
+    return db.transaction((tx) => {
+      const quote = tx.select().from(quotes).where(eq(quotes.id, quoteId)).get();
 
       if (!quote) throw new Error('Quote not found');
 
+      const items = tx.select().from(quoteItems).where(eq(quoteItems.quoteId, quoteId)).all();
+
       // Update quote status
-      await tx.update(quotes)
+      tx.update(quotes)
         .set({ status: 'Approved' })
-        .where(eq(quotes.id, quoteId));
+        .where(eq(quotes.id, quoteId))
+        .run();
 
       // Create project from quote
       const newProject = {
@@ -160,35 +192,37 @@ export function setupIpcHandlers() {
         actualCost: 0,
         startDate: new Date(),
       };
-      await tx.insert(projects).values(newProject);
+      tx.insert(projects).values(newProject).run();
 
       // Clone quote items to project milestones
-      if (quote.items && quote.items.length > 0) {
-        const newMilestones = quote.items.map(item => ({
-          id: uuidv4(),
-          projectId: newProject.id,
-          name: item.name,
-          estimatedHours: item.estimatedHours,
-          estimatedCost: item.estimatedCost,
-          price: item.price,
-          progress: 0,
-          status: 'Planned' as const,
-        }));
-        
-        for (const milestone of newMilestones) {
-          await tx.insert(milestones).values(milestone);
+      if (items && items.length > 0) {
+        console.log(`Cloning ${items.length} items to milestones for project ${newProject.id}`);
+        for (const item of items) {
+          const milestoneData = {
+            id: uuidv4(),
+            projectId: newProject.id,
+            name: item.description || 'Unnamed Milestone',
+            estimatedHours: Number(item.quantity) || 0,
+            estimatedCost: Number(item.rate) || 0,
+            price: Number(item.total) || 0,
+            progress: 0,
+            status: 'Planned' as const,
+          };
+          
+          console.log('Inserting milestone:', milestoneData);
+          tx.insert(milestones).values(milestoneData).run();
         }
       }
 
       // Log in audit trail
-      await tx.insert(auditTrail).values({
+      tx.insert(auditTrail).values({
         id: uuidv4(),
         entityType: 'Quote',
         entityId: quoteId,
         action: 'Quote Approved',
-        details: `Project ${newProject.id} created with ${quote.items?.length || 0} milestones`,
+        details: `Project ${newProject.id} created with ${items?.length || 0} milestones`,
         timestamp: new Date(),
-      });
+      }).run();
 
       return newProject;
     });
@@ -356,9 +390,7 @@ export function setupIpcHandlers() {
 
   ipcMain.handle('approve-scope-change', handleIpc(async (_, scopeChangeId) => {
     return db.transaction((tx) => {
-      const scopeChange = tx.query.scopeChanges.findFirst({
-        where: eq(scopeChanges.id, scopeChangeId)
-      }).sync();
+      const scopeChange = tx.select().from(scopeChanges).where(eq(scopeChanges.id, scopeChangeId)).get();
 
       if (!scopeChange) throw new Error('Scope change not found');
 
@@ -368,9 +400,7 @@ export function setupIpcHandlers() {
         .run();
 
       // Update project actuals/baseline based on approval
-      const project = tx.query.projects.findFirst({
-        where: eq(projects.id, scopeChange.projectId)
-      }).sync();
+      const project = tx.select().from(projects).where(eq(projects.id, scopeChange.projectId)).get();
 
       if (project) {
         const newBaselineCost = project.baselineCost + scopeChange.costImpact;
@@ -411,6 +441,13 @@ export function setupIpcHandlers() {
         project: true
       }
     });
+  }));
+
+  ipcMain.handle('update-invoice', handleIpc(async (_, { id, ...data }) => {
+    await db.update(invoices)
+      .set(data)
+      .where(eq(invoices.id, id));
+    return true;
   }));
 
   ipcMain.handle('mark-invoice-paid', handleIpc(async (_, invoiceId) => {
@@ -491,9 +528,7 @@ export function setupIpcHandlers() {
       tx.insert(expenses).values(newExpense).run();
 
       // Update project actual cost
-      const project = tx.query.projects.findFirst({
-        where: eq(projects.id, expenseData.projectId)
-      }).sync();
+      const project = tx.select().from(projects).where(eq(projects.id, expenseData.projectId)).get();
 
       if (project) {
         tx.update(projects)
@@ -508,14 +543,10 @@ export function setupIpcHandlers() {
 
   ipcMain.handle('delete-expense', handleIpc(async (_, id) => {
     return db.transaction((tx) => {
-      const expense = tx.query.expenses.findFirst({
-        where: eq(expenses.id, id)
-      }).sync();
+      const expense = tx.select().from(expenses).where(eq(expenses.id, id)).get();
 
       if (expense) {
-        const project = tx.query.projects.findFirst({
-          where: eq(projects.id, expense.projectId)
-        }).sync();
+        const project = tx.select().from(projects).where(eq(projects.id, expense.projectId)).get();
 
         if (project) {
           tx.update(projects)
@@ -537,15 +568,12 @@ export function setupIpcHandlers() {
 
   ipcMain.handle('generate-invoice', handleIpc(async (_, projectId, milestoneIds) => {
     return db.transaction((tx) => {
-      const project = tx.query.projects.findFirst({
-        where: eq(projects.id, projectId),
-        with: {
-          client: true,
-          milestones: true,
-        }
-      }).sync();
+      const project = tx.select().from(projects).where(eq(projects.id, projectId)).get();
 
       if (!project) throw new Error('Project not found');
+
+      const client = tx.select().from(clients).where(eq(clients.id, project.clientId)).get();
+      const projectMilestones = tx.select().from(milestones).where(eq(milestones.projectId, projectId)).all();
 
       // Get settings
       const allSettings = tx.select().from(settings).all();
@@ -556,13 +584,13 @@ export function setupIpcHandlers() {
 
       let subtotal = 0;
       if (milestoneIds && milestoneIds.length > 0) {
-        const selectedMilestones = project.milestones.filter(m => milestoneIds.includes(m.id));
+        const selectedMilestones = projectMilestones.filter((m) => milestoneIds.includes(m.id));
         subtotal = selectedMilestones.reduce((sum, m) => sum + m.price, 0);
       } else {
         subtotal = project.baselinePrice;
       }
 
-      const taxRate = project.client?.taxRate || parseFloat(settingsMap.taxRate || '0');
+      const taxRate = client?.taxRate || parseFloat(settingsMap.taxRate || '0');
       const tax = subtotal * (taxRate / 100);
       const total = subtotal + tax;
 
@@ -571,9 +599,8 @@ export function setupIpcHandlers() {
       const invoiceNumber = `${prefix}${nextNum}`;
 
       // Update next number in settings
-      const settingId = uuidv4();
       tx.insert(settings)
-        .values({ id: settingId, key: 'invoiceNextNumber', value: (nextNum + 1).toString(), updatedAt: new Date() })
+        .values({ id: uuidv4(), key: 'invoiceNextNumber', value: (nextNum + 1).toString(), updatedAt: new Date() })
         .onConflictDoUpdate({
           target: settings.key,
           set: { value: (nextNum + 1).toString(), updatedAt: new Date() }
@@ -675,6 +702,31 @@ export function setupIpcHandlers() {
 
   ipcMain.handle('reset-database', handleIpc(async () => {
     resetDatabase();
+    return true;
+  }));
+
+  ipcMain.handle('get-audit-trail', handleIpc(async () => {
+    return db.query.auditTrail.findMany({
+      orderBy: (audit, { desc }) => [desc(audit.timestamp)],
+      limit: 50
+    });
+  }));
+
+  ipcMain.handle('export-database', handleIpc(async () => {
+    const isDev = !app.isPackaged;
+    const dbPath = isDev 
+      ? path.join(process.cwd(), 'serviceops.db')
+      : path.join(app.getPath('userData'), 'serviceops.db');
+
+    const { filePath, canceled } = await dialog.showSaveDialog({
+      title: 'Export Database Backup',
+      defaultPath: `anchor_backup_${new Date().toISOString().split('T')[0]}.db`,
+      filters: [{ name: 'SQLite Database', extensions: ['db'] }]
+    });
+
+    if (canceled || !filePath) return false;
+
+    await fs.copyFile(dbPath, filePath);
     return true;
   }));
 }

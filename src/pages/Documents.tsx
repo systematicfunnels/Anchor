@@ -14,10 +14,6 @@ export const Documents = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadAllDocuments();
-  }, [projects]);
-
   const loadAllDocuments = async () => {
     setLoading(true);
     const docs: any[] = [];
@@ -40,6 +36,10 @@ export const Documents = () => {
     setAllDocuments(docs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     setLoading(false);
   };
+
+  useEffect(() => {
+    loadAllDocuments();
+  }, [projects]);
 
   const filteredDocs = allDocuments.filter(doc => 
     doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

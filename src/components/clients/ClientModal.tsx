@@ -91,7 +91,7 @@ export const ClientModal = ({ isOpen, onClose, client, isDuplicate = false }: Cl
               ? isDuplicate 
                 ? 'Duplicate Client' 
                 : 'Edit Client'
-              : 'Add New Client'
+              : 'New Client'
           }</h3>
           <button onClick={onClose} className="text-neutral-400 hover:text-neutral-600 transition-colors">
             <X className="w-5 h-5" />
@@ -181,7 +181,7 @@ export const ClientModal = ({ isOpen, onClose, client, isDuplicate = false }: Cl
                 ? isDuplicate 
                   ? 'Duplicate Client' 
                   : 'Save Changes'
-                : 'Add Client'
+                : 'Save Client'
             }</Button>
           </div>
         </form>

@@ -1,10 +1,10 @@
 export type Currency = 'USD' | 'EUR' | 'GBP' | 'INR';
 export type ClientStatus = 'Active' | 'Archived';
 export type ProjectType = 'Fixed' | 'T&M' | 'Retainer';
-export type ProjectStatus = 'Planned' | 'Active' | 'Completed' | 'On Hold';
+export type ProjectStatus = 'Planned' | 'Active' | 'Completed' | 'On Hold' | 'Archived';
 export type MilestoneStatus = 'Planned' | 'In Progress' | 'Completed';
-export type QuoteStatus = 'Draft' | 'Sent' | 'Approved' | 'Rejected';
-export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue';
+export type QuoteStatus = 'Draft' | 'Sent' | 'Approved' | 'Rejected' | 'Archived';
+export type InvoiceStatus = 'Draft' | 'Sent' | 'Paid' | 'Overdue' | 'Archived';
 
 export interface Client {
   id: string;
@@ -48,12 +48,33 @@ export interface Milestone {
   status: MilestoneStatus;
 }
 
+export interface QuoteItem {
+  id: string;
+  description: string;
+  quantity: number;
+  rate: number;
+  total: number;
+}
+
 export interface Quote {
   id: string;
   clientId: string;
   name: string;
   version: number;
   status: QuoteStatus;
+  items?: QuoteItem[];
+  notes?: string;
+  terms?: string;
+  taxRate?: number;
+  cgstRate?: number;
+  sgstRate?: number;
+  discountRate?: number;
+  gstin?: string;
+  businessEmail?: string;
+  businessPhone?: string;
+  businessAddress?: string;
+  quotationNumber?: string;
+  issueDate?: Date;
   totalCost: number;
   totalPrice: number;
   margin: number;
@@ -72,9 +93,9 @@ export interface ScopeChange {
   createdAt: Date;
 }
 
-export interface AuditTrail {
+export interface AuditLog {
   id: string;
-  entityType: 'Quote' | 'Invoice' | 'Project';
+  entityType: string;
   entityId: string;
   action: string;
   details?: string;

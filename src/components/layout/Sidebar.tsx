@@ -20,10 +20,10 @@ function cn(...inputs: ClassValue[]) {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '#dashboard' },
+  { icon: Files, label: 'Quotes', href: '#quotes' },
   { icon: Briefcase, label: 'Projects', href: '#projects' },
   { icon: Receipt, label: 'Invoices', href: '#invoices' },
   { icon: Users, label: 'Clients', href: '#clients' },
-  { icon: Files, label: 'Documents', href: '#documents' },
   { icon: BarChart3, label: 'Unit Economics', href: '#economics' },
   { icon: Settings, label: 'Settings', href: '#settings' },
 ];
@@ -73,7 +73,7 @@ export const Sidebar = ({ onNavigate }: { onNavigate?: () => void }) => {
           className="w-full bg-primary-600 hover:bg-primary-700 text-white py-2 px-3 rounded-md text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm"
         >
           <UserPlus className="w-4 h-4" />
-          Add Client
+          New Client
         </button>
       </div>
 

@@ -1,4 +1,4 @@
-import { Client, Project, Quote, Invoice, Milestone, ScopeChange, Document, Expense } from './types';
+import { Client, Project, Quote, Invoice, Milestone, ScopeChange, Document, Expense, AuditLog } from './types';
 
 export interface IElectronAPI {
   getClients: () => Promise<Client[]>;
@@ -32,9 +32,11 @@ export interface IElectronAPI {
 
   getQuotes: () => Promise<Quote[]>;
   createQuote: (quoteData: Partial<Quote>) => Promise<Quote>;
+  updateQuote: (quoteData: Partial<Quote> & { id: string }) => Promise<void>;
   duplicateQuote: (quoteId: string) => Promise<Quote>;
   approveQuote: (quoteId: string) => Promise<Project>;
   getInvoices: () => Promise<Invoice[]>;
+  updateInvoice: (invoiceData: Partial<Invoice> & { id: string }) => Promise<void>;
   markInvoicePaid: (id: string) => Promise<boolean>;
   createManualInvoice: (invoiceData: { 
     clientId: string, 
@@ -50,6 +52,8 @@ export interface IElectronAPI {
   getSettings: () => Promise<Record<string, string>>;
   updateSettings: (key: string, value: string) => Promise<boolean>;
   resetDatabase: () => Promise<boolean>;
+  exportDatabase: () => Promise<boolean>;
+  getAuditTrail: () => Promise<AuditLog[]>;
   onMessage: (callback: (message: string) => void) => void;
 }
 

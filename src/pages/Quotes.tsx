@@ -1,22 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store/useStore';
-import { useNotificationStore } from '../store/useNotificationStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
 import { ContextMenu } from '../components/ui/ContextMenu';
-import { Plus, FileText, CheckCircle, Clock, AlertCircle, Copy, Archive, Download, Trash2 } from 'lucide-react';
+import { DropdownMenu } from '../components/ui/DropdownMenu';
+import { Plus, FileText, CheckCircle, Clock, AlertCircle, Copy, Archive, Download, Trash2, MoreVertical } from 'lucide-react';
 import { QuoteModal } from '../components/quotes/QuoteModal';
 import { getMarginColor } from '../lib/finance';
 import { useCurrency } from '../hooks/useCurrency';
+import { Quote } from '../types';
 
 export const Quotes = () => {
   const { formatCurrency } = useCurrency();
-  const { quotes, fetchQuotes, fetchClients, approveQuote, duplicateQuote, deleteQuote, loading } = useStore();
-  const { addNotification } = useNotificationStore();
+  const { quotes, fetchQuotes, fetchClients, approveQuote, duplicateQuote, deleteQuote, archiveQuote, loading } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
+  const [quoteViewMode, setQuoteViewMode] = useState<'edit' | 'preview'>('edit');
+
+  const activeQuotes = useMemo(() => quotes.filter(q => q.status !== 'Archived'), [quotes]);
+
+  const handleEdit = (quote: Quote, view: 'edit' | 'preview' = 'edit') => {
+    setEditingQuote(quote);
+    setQuoteViewMode(view);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingQuote(null);
+    setQuoteViewMode('edit');
+  };
   const [confirmApproveId, setConfirmApproveId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchQuotes();
@@ -46,6 +63,15 @@ export const Quotes = () => {
     }
   };
 
+  const handleArchive = async (id: string) => {
+    try {
+      await archiveQuote(id);
+      setConfirmArchiveId(null);
+    } catch (error) {
+      // Handled by store
+    }
+  };
+
   const navigate = (path: string) => { window.location.hash = path; };
 
   return (
@@ -62,7 +88,7 @@ export const Quotes = () => {
           </Button>
           <Button onClick={() => setIsModalOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
-            Create Quote
+            New Quote
           </Button>
         </div>
       </div>
@@ -71,7 +97,7 @@ export const Quotes = () => {
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
         </div>
-      ) : quotes.length === 0 ? (
+      ) : activeQuotes.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-12 px-6 text-center border-dashed border-2">
           <div className="w-16 h-16 bg-neutral-100 rounded-full flex items-center justify-center mb-4">
             <FileText className="w-8 h-8 text-neutral-400" />
@@ -81,11 +107,11 @@ export const Quotes = () => {
             Create your first quote to define project scope and pricing.
           </p>
           <Button intent="secondary" className="mt-6" onClick={() => setIsModalOpen(true)}>
-            Create First Quote
+            New Quote
           </Button>
         </Card>
       ) : (
-        <Card className="overflow-hidden shadow-sm">
+        <Card className="shadow-sm">
           <CardContent className="p-0">
             <table className="min-w-full">
               <thead>
@@ -99,17 +125,26 @@ export const Quotes = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {quotes.map((quote) => (
+                {activeQuotes.map((quote) => (
                   <tr key={quote.id} className="hover:bg-neutral-50 transition-colors group">
                     <td colSpan={6} className="p-0">
                       <ContextMenu items={[
                         { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: () => duplicateQuote(quote.id) },
-                        { label: 'Export PDF', icon: <Download className="w-4 h-4" />, onClick: () => addNotification({ type: 'info', message: 'Generating PDF...' }) },
+                        { label: 'Export PDF', icon: <Download className="w-4 h-4" />, onClick: () => handleEdit(quote, 'preview') },
+                        { label: 'Archive', icon: <Archive className="w-4 h-4" />, onClick: () => setConfirmArchiveId(quote.id) },
                         { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => setConfirmDeleteId(quote.id), variant: 'danger' },
                       ]}>
                         <div className="flex items-center w-full px-4 py-3">
                           <div className="w-[10%]">
-                            <div className="font-bold text-neutral-900">{quote.name}</div>
+                            <div 
+                              className="font-bold text-neutral-900 group-hover:text-primary-600 cursor-pointer transition-colors outline-none focus:underline" 
+                              onClick={() => handleEdit(quote)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleEdit(quote)}
+                              tabIndex={0}
+                              role="button"
+                            >
+                              {quote.name}
+                            </div>
                             <div className="text-[10px] text-neutral-400 font-mono uppercase">v{quote.version} • {quote.id.slice(0, 8)}</div>
                           </div>
                           <div className="w-[20%]">{quote.client?.name || 'Unknown Client'}</div>
@@ -142,42 +177,36 @@ export const Quotes = () => {
                                 Approve
                               </Button>
                             )}
-                            <Button 
-                              intent="secondary" 
-                              size="sm"
-                              className="p-1.5"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                duplicateQuote(quote.id);
-                              }}
-                              title="Duplicate Quote"
-                            >
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              intent="secondary" 
-                              size="sm"
-                              className="p-1.5"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                addNotification({ type: 'info', message: 'Generating PDF...' });
-                              }}
-                              title="Export PDF"
-                            >
-                              <Download className="w-4 h-4" />
-                            </Button>
-                            <Button 
-                              intent="secondary" 
-                              size="sm" 
-                              className="p-1.5 text-red-600 hover:text-red-700"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmDeleteId(quote.id);
-                              }}
-                              title="Delete Quote"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <DropdownMenu
+                              trigger={
+                                <button className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500">
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                              }
+                              items={[
+                                 { 
+                                   label: 'Duplicate', 
+                                   icon: <Copy className="w-4 h-4" />, 
+                                   onClick: () => duplicateQuote(quote.id) 
+                                 },
+                                 { 
+                                   label: 'Export PDF', 
+                                   icon: <Download className="w-4 h-4" />, 
+                                   onClick: () => handleEdit(quote, 'preview') 
+                                 },
+                                 { 
+                                   label: 'Archive', 
+                                   icon: <Archive className="w-4 h-4" />, 
+                                   onClick: () => setConfirmArchiveId(quote.id) 
+                                 },
+                                 { 
+                                   label: 'Delete', 
+                                   icon: <Trash2 className="w-4 h-4" />, 
+                                   onClick: () => setConfirmDeleteId(quote.id),
+                                   variant: 'danger' 
+                                 },
+                               ]}
+                             />
                           </div>
                         </div>
                       </ContextMenu>
@@ -192,7 +221,9 @@ export const Quotes = () => {
 
       <QuoteModal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+        onClose={handleCloseModal}
+        quote={editingQuote || undefined}
+        initialView={quoteViewMode}
       />
 
       <ConfirmationDialog
@@ -203,6 +234,15 @@ export const Quotes = () => {
         description="Are you sure you want to approve this quote? This will create an active project and lock the financial baseline."
         confirmText="Approve & Start Project"
         impact="Converts quote to active project, locking price and initial margin baseline."
+      />
+
+      <ConfirmationDialog
+        isOpen={!!confirmArchiveId}
+        onClose={() => setConfirmArchiveId(null)}
+        onConfirm={() => confirmArchiveId && handleArchive(confirmArchiveId)}
+        title="Archive Quote"
+        description="Are you sure you want to archive this quote? It will be hidden from the active list but its data will be preserved."
+        confirmText="Archive Quote"
       />
 
       <ConfirmationDialog

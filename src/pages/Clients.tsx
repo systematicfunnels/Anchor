@@ -3,18 +3,19 @@ import { useStore } from '../store/useStore';
 import { Card, CardContent } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
-import { Plus, MoreVertical, Mail, Phone, MapPin, Users, Trash2, Edit2, Copy } from 'lucide-react';
+import { Plus, MoreVertical, Mail, Phone, MapPin, Users, Trash2, Edit2, Copy, Archive } from 'lucide-react';
 import { ClientModal } from '../components/clients/ClientModal';
 import { DropdownMenu } from '../components/ui/DropdownMenu';
 import { Client } from '../types';
 
 export const Clients = () => {
-  const { clients, fetchClients, deleteClient, loading } = useStore();
+  const { clients, fetchClients, deleteClient, archiveClient, loading } = useStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDuplicateModalOpen, setIsDuplicateModalOpen] = useState(false);
   const [clientToEdit, setClientToEdit] = useState<Client | null>(null);
   const [clientToDuplicate, setClientToDuplicate] = useState<Client | null>(null);
   const [clientToDelete, setClientToDelete] = useState<string | null>(null);
+  const [clientToArchive, setClientToArchive] = useState<string | null>(null);
 
   const handleDuplicate = (client: Client) => {
     setClientToDuplicate(client);
@@ -34,6 +35,13 @@ export const Clients = () => {
     if (clientToDelete) {
       await deleteClient(clientToDelete);
       setClientToDelete(null);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (clientToArchive) {
+      await archiveClient(clientToArchive);
+      setClientToArchive(null);
     }
   };
 
@@ -58,7 +66,7 @@ export const Clients = () => {
         </div>
         <Button onClick={() => setIsModalOpen(true)} className="gap-2 w-full sm:w-auto">
           <Plus className="w-4 h-4" />
-          Add Client
+          New Client
         </Button>
       </div>
 
@@ -76,11 +84,11 @@ export const Clients = () => {
             Start by adding your first client to create projects, quotes, and invoices.
           </p>
           <Button intent="secondary" className="mt-6" onClick={() => setIsModalOpen(true)}>
-            Add First Client
+            New Client
           </Button>
         </Card>
       ) : (        <div className="grid-layout">
-          {clients.map((client) => (
+          {clients.filter(c => c.status !== 'Archived').map((client) => (
             <Card 
               key={client.id} 
               className="hover:border-primary-200 transition-colors group cursor-pointer"
@@ -91,7 +99,7 @@ export const Clients = () => {
                   <div className="w-12 h-12 bg-primary-50 rounded-lg flex items-center justify-center text-primary-600 font-bold text-xl">
                     {client.name.charAt(0)}
                   </div>
-                  <div>
+                  <div className="relative z-[100]">
                     <DropdownMenu
                       trigger={
                         <button 
@@ -103,6 +111,7 @@ export const Clients = () => {
                       items={[
                         { label: 'Edit', icon: <Edit2 className="w-4 h-4" />, onClick: () => handleEdit(client) },
                         { label: 'Duplicate', icon: <Copy className="w-4 h-4" />, onClick: () => handleDuplicate(client) },
+                        { label: 'Archive', icon: <Archive className="w-4 h-4" />, onClick: () => setClientToArchive(client.id) },
                         { label: 'Delete', icon: <Trash2 className="w-4 h-4" />, onClick: () => setClientToDelete(client.id), variant: 'danger' },
                       ]}
                     />
@@ -147,6 +156,15 @@ export const Clients = () => {
         onClose={handleCloseDuplicateModal} 
         client={clientToDuplicate}
         isDuplicate={true}
+      />
+
+      <ConfirmationDialog
+        isOpen={!!clientToArchive}
+        onClose={() => setClientToArchive(null)}
+        onConfirm={handleArchive}
+        title="Archive Client"
+        description="Are you sure you want to archive this client? They will be hidden from the active list but their data will be preserved."
+        confirmText="Archive Client"
       />
 
       <ConfirmationDialog

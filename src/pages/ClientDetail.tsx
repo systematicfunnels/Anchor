@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
+import { useNotificationStore } from '../store/useNotificationStore';
 import { Card, CardContent } from '../components/ui/Card';
+import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
+import { DropdownMenu } from '../components/ui/DropdownMenu';
+import { ClientModal } from '../components/clients/ClientModal';
 import { 
   ChevronLeft, 
   Plus, 
@@ -11,7 +15,11 @@ import {
   Phone,
   MapPin,
   TrendingUp,
-  Clock
+  Clock,
+  MoreVertical,
+  Archive,
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { useCurrency } from '../hooks/useCurrency';
 import { ProjectModal } from '../components/projects/ProjectModal';
@@ -30,10 +38,16 @@ export const ClientDetail = () => {
     fetchClients, 
     fetchProjects, 
     fetchQuotes, 
-    fetchInvoices 
+    fetchInvoices,
+    archiveClient,
+    deleteClient
   } = useStore();
+  const { addNotification } = useNotificationStore();
   
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [clientToArchive, setClientToArchive] = useState<string | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,10 +64,26 @@ export const ClientDetail = () => {
     loadData();
   }, [id]);
 
+  const handleArchive = async () => {
+    if (!clientToArchive) return;
+    await archiveClient(clientToArchive);
+    setClientToArchive(null);
+    addNotification({ type: 'success', message: 'Client archived' });
+    navigate('#clients');
+  };
+
+  const handleDelete = async () => {
+    if (!clientToDelete) return;
+    await deleteClient(clientToDelete);
+    setClientToDelete(null);
+    addNotification({ type: 'success', message: 'Client deleted' });
+    navigate('#clients');
+  };
+
   const client = clients.find(c => c.id === id);
-  const clientProjects = projects.filter(p => p.clientId === id);
-  const clientQuotes = quotes.filter(q => q.clientId === id);
-  const clientInvoices = invoices.filter(i => i.clientId === id);
+  const clientProjects = projects.filter(p => p.clientId === id && p.status !== 'Archived');
+  const clientQuotes = quotes.filter(q => q.clientId === id && q.status !== 'Archived');
+  const clientInvoices = invoices.filter(i => i.clientId === id && i.status !== 'Archived');
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div></div>;
   if (!client) return <div className="p-8 text-center">Client not found</div>;
@@ -81,21 +111,35 @@ export const ClientDetail = () => {
       </nav>
 
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <button 
-          onClick={() => navigate('#clients')}
-          className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5 text-neutral-500" />
-        </button>
-        <div>
-          <h2 className="text-2xl font-bold text-neutral-900">{client.name}</h2>
-          <div className="flex items-center gap-4 mt-1 text-sm text-neutral-500 font-medium">
-            <span className="flex items-center gap-1.5"><Mail className="w-4 h-4" /> {client.email || 'No email'}</span>
-            <span className="flex items-center gap-1.5"><Phone className="w-4 h-4" /> {client.phone || 'No phone'}</span>
-            <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {client.billingAddress || 'No address'}</span>
+      <div className="flex justify-between items-start">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate('#clients')}
+            className="p-2 hover:bg-neutral-100 rounded-full transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5 text-neutral-500" />
+          </button>
+          <div>
+            <h2 className="text-2xl font-bold text-neutral-900">{client.name}</h2>
+            <div className="flex items-center gap-4 mt-1 text-sm text-neutral-500 font-medium">
+              <span className="flex items-center gap-1.5"><Mail className="w-4 h-4" /> {client.email || 'No email'}</span>
+              <span className="flex items-center gap-1.5"><Phone className="w-4 h-4" /> {client.phone || 'No phone'}</span>
+              <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {client.billingAddress || 'No address'}</span>
+            </div>
           </div>
         </div>
+        <DropdownMenu
+          trigger={
+            <button className="p-2 hover:bg-neutral-100 rounded-lg transition-colors text-neutral-500">
+              <MoreVertical className="w-5 h-5" />
+            </button>
+          }
+          items={[
+            { label: 'Edit Client', icon: <Edit2 className="w-4 h-4" />, onClick: () => setIsEditModalOpen(true) },
+            { label: 'Archive Client', icon: <Archive className="w-4 h-4" />, onClick: () => setClientToArchive(client.id) },
+            { label: 'Delete Client', icon: <Trash2 className="w-4 h-4" />, onClick: () => setClientToDelete(client.id), variant: 'danger' }
+          ]}
+        />
       </div>
 
       {/* Stats Overview */}
@@ -284,6 +328,33 @@ export const ClientDetail = () => {
         isOpen={isProjectModalOpen} 
         onClose={() => setIsProjectModalOpen(false)}
         initialClientId={id}
+      />
+
+      {client && (
+        <ClientModal 
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          client={client}
+        />
+      )}
+
+      <ConfirmationDialog
+        isOpen={!!clientToArchive}
+        onClose={() => setClientToArchive(null)}
+        onConfirm={handleArchive}
+        title="Archive Client"
+        description="Are you sure you want to archive this client? They will be hidden from the active list but their data will be preserved."
+        confirmText="Archive Client"
+      />
+
+      <ConfirmationDialog
+        isOpen={!!clientToDelete}
+        onClose={() => setClientToDelete(null)}
+        onConfirm={handleDelete}
+        title="Delete Client"
+        description="Are you sure you want to delete this client? This will also delete all associated projects, quotes, and invoices. This action cannot be undone."
+        confirmText="Delete Client"
+        intent="danger"
       />
     </div>
   );
